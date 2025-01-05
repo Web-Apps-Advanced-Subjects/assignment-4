@@ -1,0 +1,58 @@
+Date : 2025-01-03 15:33:09
+Directory : c:\Users\bidan\Clones\assignment-2\src
+Total : 27 files,  1870 codes, 297 comments, 492 blanks, all 2659 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| TypeScript |         27 |      1,870 |        297 |        492 |      2,659 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++--------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                     | files      | code       | comment    | blank      | total      |
++--------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                        |         27 |      1,870 |        297 |        492 |      2,659 |
+| . (Files)                                                                |          3 |         48 |          0 |         15 |         63 |
+| controllers                                                              |          6 |        144 |          1 |         59 |        204 |
+| middleware                                                               |          2 |         20 |          1 |          7 |         28 |
+| models                                                                   |          5 |        116 |          7 |         29 |        152 |
+| routes                                                                   |          5 |        347 |        288 |        116 |        751 |
+| tests                                                                    |          4 |      1,190 |          0 |        264 |      1,454 |
+| types                                                                    |          2 |          5 |          0 |          2 |          7 |
++--------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++--------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                 | language   | code       | comment    | blank      | total      |
++--------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| c:\Users\bidan\Clones\assignment-2\src\app.ts                            | TypeScript |          9 |          0 |          4 |         13 |
+| c:\Users\bidan\Clones\assignment-2\src\controllers\BaseController.ts     | TypeScript |         29 |          0 |         10 |         39 |
+| c:\Users\bidan\Clones\assignment-2\src\controllers\CommentsController.ts | TypeScript |         28 |          0 |         12 |         40 |
+| c:\Users\bidan\Clones\assignment-2\src\controllers\LikesController.ts    | TypeScript |         15 |          0 |          8 |         23 |
+| c:\Users\bidan\Clones\assignment-2\src\controllers\PostsController.ts    | TypeScript |         15 |          0 |          9 |         24 |
+| c:\Users\bidan\Clones\assignment-2\src\controllers\UsersController.ts    | TypeScript |         53 |          1 |         19 |         73 |
+| c:\Users\bidan\Clones\assignment-2\src\controllers\index.ts              | TypeScript |          4 |          0 |          1 |          5 |
+| c:\Users\bidan\Clones\assignment-2\src\index.ts                          | TypeScript |          0 |          0 |          1 |          1 |
+| c:\Users\bidan\Clones\assignment-2\src\middleware\auth.ts                | TypeScript |         19 |          1 |          6 |         26 |
+| c:\Users\bidan\Clones\assignment-2\src\middleware\index.ts               | TypeScript |          1 |          0 |          1 |          2 |
+| c:\Users\bidan\Clones\assignment-2\src\models\comments.ts                | TypeScript |         35 |          3 |          8 |         46 |
+| c:\Users\bidan\Clones\assignment-2\src\models\index.ts                   | TypeScript |          4 |          0 |          1 |          5 |
+| c:\Users\bidan\Clones\assignment-2\src\models\likes.ts                   | TypeScript |         19 |          0 |          6 |         25 |
+| c:\Users\bidan\Clones\assignment-2\src\models\posts.ts                   | TypeScript |         28 |          2 |          7 |         37 |
+| c:\Users\bidan\Clones\assignment-2\src\models\users.ts                   | TypeScript |         30 |          2 |          7 |         39 |
+| c:\Users\bidan\Clones\assignment-2\src\routes\comments.ts                | TypeScript |         72 |          2 |         25 |         99 |
+| c:\Users\bidan\Clones\assignment-2\src\routes\index.ts                   | TypeScript |          4 |          0 |          1 |          5 |
+| c:\Users\bidan\Clones\assignment-2\src\routes\likes.ts                   | TypeScript |         32 |          3 |         12 |         47 |
+| c:\Users\bidan\Clones\assignment-2\src\routes\posts.ts                   | TypeScript |        101 |          1 |         29 |        131 |
+| c:\Users\bidan\Clones\assignment-2\src\routes\users.ts                   | TypeScript |        138 |        282 |         49 |        469 |
+| c:\Users\bidan\Clones\assignment-2\src\server.ts                         | TypeScript |         39 |          0 |         10 |         49 |
+| c:\Users\bidan\Clones\assignment-2\src\tests\comment.test.ts             | TypeScript |        326 |          0 |         82 |        408 |
+| c:\Users\bidan\Clones\assignment-2\src\tests\like.test.ts                | TypeScript |        130 |          0 |         24 |        154 |
+| c:\Users\bidan\Clones\assignment-2\src\tests\post.test.ts                | TypeScript |        304 |          0 |         65 |        369 |
+| c:\Users\bidan\Clones\assignment-2\src\tests\user.test.ts                | TypeScript |        430 |          0 |         93 |        523 |
+| c:\Users\bidan\Clones\assignment-2\src\types\index.ts                    | TypeScript |          1 |          0 |          1 |          2 |
+| c:\Users\bidan\Clones\assignment-2\src\types\mongooseUtils.ts            | TypeScript |          4 |          0 |          1 |          5 |
+| Total                                                                    |            |      1,870 |        297 |        492 |      2,659 |
++--------------------------------------------------------------------------+------------+------------+------------+------------+------------+
