@@ -10,7 +10,6 @@ import {
   Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@libs/userContext";
 import { boxBorderRadius, buttonBorderRadius } from "@libs/consts";
 import LikeButton from "@libs/LikeButton";
 import CommentButton from "@libs/CommentButton";
@@ -19,87 +18,114 @@ import {
   getUserDetails,
   type Post as PostApi,
 } from "@libs/api";
+import PostMoreButton from "@libs/PostMoreButton";
+import { createLink } from "@tanstack/react-router";
+import { ReactNode } from "react";
+import { useUser } from "./userContext";
+
+const CardActionAreaLink = createLink(CardActionArea);
+
+type _OptionalCardActionAreaLinkProps = {
+  children: ReactNode;
+  inPostPage: boolean;
+  postID: PostApi["_id"];
+};
+
+const _OptionalCardActionAreaLink = (
+  props: _OptionalCardActionAreaLinkProps
+) => {
+  const { inPostPage, postID, children } = props;
+
+  if (inPostPage) {
+    return children;
+  } else {
+    return (
+      <CardActionAreaLink to="/posts/$postID" params={{ postID }}>
+        {children}
+      </CardActionAreaLink>
+    );
+  }
+};
 
 type PostProps = {
   postID: PostApi["_id"];
-  unlistPost: () => void;
+  inPostPage?: boolean;
 };
 
 const Post = (props: PostProps) => {
-  const { postID } = props;
+  const { postID, inPostPage = false } = props;
 
   const { user } = useUser();
 
   const { data: postDetails } = useQuery({
-    queryKey: [user, postID],
+    queryKey: ["postDetails", postID],
     queryFn: () => {
-      if (user === null) {
-        throw new Error("should never be called with unknown user");
-      }
-
-      return getPostDetails(user.accessToken, postID);
+      return getPostDetails(postID);
     },
-    enabled: user !== undefined,
   });
 
   const { data: postOwnerDetails } = useQuery({
-    queryKey: [user, postDetails],
+    queryKey: ["userDetail", postDetails?.userID],
     queryFn: () => {
-      if (user === null || postDetails === undefined) {
+      if (postDetails?.userID === undefined) {
         throw new Error("should never be called with unknown user");
       }
 
-      return getUserDetails(user.accessToken, postDetails.userID);
+      return getUserDetails(postDetails.userID);
     },
-    enabled: user !== undefined && postDetails !== undefined,
+    enabled: postDetails?.userID !== undefined,
   });
 
   return (
-    <Stack spacing={1.5} sx={{ paddingX: 2 }}>
-      <Card sx={{ borderRadius: boxBorderRadius }}>
-        <CardActionArea sx={{ borderRadius: 0 }}>
-          <CardHeader
-            avatar={
-              <Avatar
-                src={
-                  postOwnerDetails &&
-                  `http://localhost:3000/${postOwnerDetails.avatar}`
-                }
+    <Card sx={{ borderRadius: boxBorderRadius }}>
+      <_OptionalCardActionAreaLink inPostPage={inPostPage} postID={postID}>
+        <CardHeader
+          avatar={
+            <Avatar src={`http://localhost:3000/${postOwnerDetails?.avatar}`} />
+          }
+          action={
+            inPostPage &&
+            postDetails?.userID === user?._id && (
+              <PostMoreButton
+                postID={postID}
+                avatar={postOwnerDetails?.avatar}
+                content={postDetails?.content}
+                media={postDetails?.media}
               />
-            }
-            title={postOwnerDetails?.username}
+            )
+          }
+          title={postOwnerDetails?.username}
+        />
+        <CardContent>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            {postDetails?.content}
+          </Typography>
+        </CardContent>
+        {postDetails?.media && (
+          <CardMedia
+            component="img"
+            image={`http://localhost:3000/${postDetails?.media}`}
+            sx={{ padding: 2, maxHeight: 500 }}
           />
-          <CardContent>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {postDetails?.content}
-            </Typography>
-          </CardContent>
-          {postDetails?.media && (
-            <CardMedia
-              component="img"
-              image={`http://localhost:3000/${postDetails.media}`}
-              sx={{ padding: 2 }}
-            />
-          )}
-        </CardActionArea>
-        <CardActions disableSpacing>
-          <Stack direction="row" spacing={2}>
-            <LikeButton
+        )}
+      </_OptionalCardActionAreaLink>
+      <CardActions disableSpacing>
+        <Stack direction="row" spacing={2}>
+          <LikeButton
+            postID={postID}
+            sx={{ borderRadius: buttonBorderRadius }}
+          />
+          {postDetails && (
+            <CommentButton
               postID={postID}
+              userID={postDetails.userID}
+              content={postDetails.content}
               sx={{ borderRadius: buttonBorderRadius }}
             />
-            {postDetails && (
-              <CommentButton
-                postID={postID}
-                userID={postDetails.userID}
-                content={postDetails.content}
-                sx={{ borderRadius: buttonBorderRadius }}
-              />
-            )}
-          </Stack>
-        </CardActions>
-      </Card>
-    </Stack>
+          )}
+        </Stack>
+      </CardActions>
+    </Card>
   );
 };
 

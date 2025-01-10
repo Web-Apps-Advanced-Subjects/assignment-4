@@ -10,6 +10,7 @@ import {
   CardContent,
   TextField,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import RemoveMediaIcon from "@mui/icons-material/FolderDelete";
 import AddMediaIcon from "@mui/icons-material/UploadFile";
@@ -18,7 +19,9 @@ import { LoadingButton } from "@mui/lab";
 import useUser from "@libs/userContext/useUser";
 import { boxBorderRadius, buttonBorderRadius } from "@libs/consts";
 import VisuallyHiddenInput from "@libs/VisuallyHiddenInput";
-import { postPost as postPostApi } from "@libs/api";
+import { generatePostContent, postPost as postPostApi } from "@libs/api";
+import { useNavigate } from "@tanstack/react-router";
+import Logo from "@assets/logo.svg?react";
 
 type PostFormPanelProps = Omit<StackProps, "children">;
 
@@ -33,6 +36,7 @@ function PostFormPanel(props: PostFormPanelProps) {
 
   const { user } = useUser();
 
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { mutate: postPost, isPending: isPostPostPending } = useMutation({
@@ -46,6 +50,12 @@ function PostFormPanel(props: PostFormPanelProps) {
       media: File | undefined;
     }) => {
       return await postPostApi(accessToken, content, media);
+    },
+  });
+
+  const { mutate: generateContent, isPending: isGenerating } = useMutation({
+    mutationFn: async (accessToken: string) => {
+      return await generatePostContent(accessToken);
     },
   });
 
@@ -85,20 +95,31 @@ function PostFormPanel(props: PostFormPanelProps) {
       return;
     }
 
-    postPost(
+    await postPost(
       {
         content,
         accessToken: user.accessToken,
         media: mediaFile?.file,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           removeMedia();
           setContent("");
           queryClient.invalidateQueries({ queryKey: ["posts"] });
+          navigate({ to: "/posts/$postID", params: { postID: data._id } });
         },
       }
     );
+  };
+
+  const handleGenerateClick = async () => {
+    if (user === null) {
+      return;
+    }
+
+    await generateContent(user.accessToken, {
+      onSuccess: (data) => setContent(data),
+    });
   };
 
   return (
@@ -131,7 +152,7 @@ function PostFormPanel(props: PostFormPanelProps) {
           <CardMedia
             component="img"
             image={mediaFile.url}
-            sx={{ paddingX: 2, height: 360, width: 360 }}
+            sx={{ paddingX: 2, maxHeight: 500 }}
           />
         )}
 
@@ -145,6 +166,13 @@ function PostFormPanel(props: PostFormPanelProps) {
             }}
           >
             <Stack direction="row" sx={{ justifyContent: "flex-start" }}>
+              <IconButton onClick={handleGenerateClick} disabled={isGenerating}>
+                {isGenerating ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <Logo width={24} height={24} />
+                )}
+              </IconButton>
               <IconButton component="label" role={undefined} tabIndex={-1}>
                 <VisuallyHiddenInput
                   type="file"

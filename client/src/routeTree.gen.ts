@@ -15,6 +15,8 @@ import { Route as LoginImport } from './routes/login'
 import { Route as HomeLayoutImport } from './routes/_home/layout'
 import { Route as HomeProfileImport } from './routes/_home/profile'
 import { Route as HomeHomeImport } from './routes/_home/home'
+import { Route as HomeUsersUserIDImport } from './routes/_home/users_/$userID'
+import { Route as HomePostsPostIDImport } from './routes/_home/posts_/$postID'
 
 // Create/Update Routes
 
@@ -38,6 +40,18 @@ const HomeProfileRoute = HomeProfileImport.update({
 const HomeHomeRoute = HomeHomeImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => HomeLayoutRoute,
+} as any)
+
+const HomeUsersUserIDRoute = HomeUsersUserIDImport.update({
+  id: '/users_/$userID',
+  path: '/users/$userID',
+  getParentRoute: () => HomeLayoutRoute,
+} as any)
+
+const HomePostsPostIDRoute = HomePostsPostIDImport.update({
+  id: '/posts_/$postID',
+  path: '/posts/$postID',
   getParentRoute: () => HomeLayoutRoute,
 } as any)
 
@@ -73,6 +87,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HomeProfileImport
       parentRoute: typeof HomeLayoutImport
     }
+    '/_home/posts_/$postID': {
+      id: '/_home/posts_/$postID'
+      path: '/posts/$postID'
+      fullPath: '/posts/$postID'
+      preLoaderRoute: typeof HomePostsPostIDImport
+      parentRoute: typeof HomeLayoutImport
+    }
+    '/_home/users_/$userID': {
+      id: '/_home/users_/$userID'
+      path: '/users/$userID'
+      fullPath: '/users/$userID'
+      preLoaderRoute: typeof HomeUsersUserIDImport
+      parentRoute: typeof HomeLayoutImport
+    }
   }
 }
 
@@ -81,11 +109,15 @@ declare module '@tanstack/react-router' {
 interface HomeLayoutRouteChildren {
   HomeHomeRoute: typeof HomeHomeRoute
   HomeProfileRoute: typeof HomeProfileRoute
+  HomePostsPostIDRoute: typeof HomePostsPostIDRoute
+  HomeUsersUserIDRoute: typeof HomeUsersUserIDRoute
 }
 
 const HomeLayoutRouteChildren: HomeLayoutRouteChildren = {
   HomeHomeRoute: HomeHomeRoute,
   HomeProfileRoute: HomeProfileRoute,
+  HomePostsPostIDRoute: HomePostsPostIDRoute,
+  HomeUsersUserIDRoute: HomeUsersUserIDRoute,
 }
 
 const HomeLayoutRouteWithChildren = HomeLayoutRoute._addFileChildren(
@@ -97,6 +129,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/home': typeof HomeHomeRoute
   '/profile': typeof HomeProfileRoute
+  '/posts/$postID': typeof HomePostsPostIDRoute
+  '/users/$userID': typeof HomeUsersUserIDRoute
 }
 
 export interface FileRoutesByTo {
@@ -104,6 +138,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/home': typeof HomeHomeRoute
   '/profile': typeof HomeProfileRoute
+  '/posts/$postID': typeof HomePostsPostIDRoute
+  '/users/$userID': typeof HomeUsersUserIDRoute
 }
 
 export interface FileRoutesById {
@@ -112,14 +148,29 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_home/home': typeof HomeHomeRoute
   '/_home/profile': typeof HomeProfileRoute
+  '/_home/posts_/$postID': typeof HomePostsPostIDRoute
+  '/_home/users_/$userID': typeof HomeUsersUserIDRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/login' | '/home' | '/profile'
+  fullPaths:
+    | ''
+    | '/login'
+    | '/home'
+    | '/profile'
+    | '/posts/$postID'
+    | '/users/$userID'
   fileRoutesByTo: FileRoutesByTo
-  to: '' | '/login' | '/home' | '/profile'
-  id: '__root__' | '/_home' | '/login' | '/_home/home' | '/_home/profile'
+  to: '' | '/login' | '/home' | '/profile' | '/posts/$postID' | '/users/$userID'
+  id:
+    | '__root__'
+    | '/_home'
+    | '/login'
+    | '/_home/home'
+    | '/_home/profile'
+    | '/_home/posts_/$postID'
+    | '/_home/users_/$userID'
   fileRoutesById: FileRoutesById
 }
 
@@ -151,7 +202,9 @@ export const routeTree = rootRoute
       "filePath": "_home/layout.tsx",
       "children": [
         "/_home/home",
-        "/_home/profile"
+        "/_home/profile",
+        "/_home/posts_/$postID",
+        "/_home/users_/$userID"
       ]
     },
     "/login": {
@@ -163,6 +216,14 @@ export const routeTree = rootRoute
     },
     "/_home/profile": {
       "filePath": "_home/profile.tsx",
+      "parent": "/_home"
+    },
+    "/_home/posts_/$postID": {
+      "filePath": "_home/posts_/$postID.tsx",
+      "parent": "/_home"
+    },
+    "/_home/users_/$userID": {
+      "filePath": "_home/users_/$userID.tsx",
       "parent": "/_home"
     }
   }

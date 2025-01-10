@@ -24,15 +24,10 @@ const LikeButton = (props: LikeButtonProps) => {
   const queryClient = useQueryClient();
 
   const { data: likeCount } = useQuery({
-    queryKey: ["likeCount", user, postID],
+    queryKey: ["likeCount", postID],
     queryFn: () => {
-      if (user === null) {
-        throw new Error("should never be called with unknown user");
-      }
-
-      return getLikeCount(user.accessToken, postID);
+      return getLikeCount(postID);
     },
-    enabled: user !== undefined,
   });
 
   const { data: isLiked } = useQuery({
@@ -89,7 +84,7 @@ const LikeButton = (props: LikeButtonProps) => {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
-            queryKey: ["likeCount", user, postID],
+            queryKey: ["likeCount", postID],
           });
           queryClient.invalidateQueries({
             queryKey: ["isLiked", user, postID],

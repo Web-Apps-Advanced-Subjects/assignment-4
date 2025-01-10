@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { Stack } from "@mui/material";
-import { useUser } from "@libs/userContext";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useTheme } from "@mui/material";
+import { useEffect, useState } from "react";
 import Post from "@libs/Post";
-import { Post as PostApi, Posts, getPosts } from "@libs/api";
+import { Posts, getPosts } from "@libs/api";
+import InfiniteScroll from "react-infinite-scroll-component";
 
 export const Route = createFileRoute("/_home/home")({
   component: HomeComponent,
@@ -13,90 +12,43 @@ export const Route = createFileRoute("/_home/home")({
 
 function HomeComponent() {
   const [posts, setPosts] = useState<Posts>([]);
-  const [lastPostID, setLastPostID] = useState<PostApi["_id"] | null>(null);
-  const { user } = useUser();
-
-  // const lastPostID = useMemo(() => {
-  //   const lastPost = posts.at(-1);
-
-  //   if (lastPost === undefined) {
-  //     return null;
-  //   }
-
-  //   return lastPost._id;
-  // }, [posts]);
-
-  // const { data: receivedPosts } = useQuery({
-  //   queryKey: [user, lastPostID],
-  //   queryFn: () => {
-  //     if (user === null) {
-  //       throw new Error("should never be called with unknown user");
-  //     }
-
-  //     return getPosts(user.accessToken, lastPostID);
-  //   },
-  //   enabled: user !== undefined,
-  // });
-
-  // useEffect(() => {
-  //   if (receivedPosts !== undefined) {
-  //     console.log(receivedPosts);
-  //     console.log(posts);
-  //     setPosts((oldPosts) => oldPosts.concat(receivedPosts));
-  //   }
-  // }, [receivedPosts]);
-
-  const handleScroll = () => {
-    const scrollY = window.scrollY;
-    console.log(scrollY);
-    const windowHeight = window.innerHeight;
-    const documentHeight = document.documentElement.scrollHeight;
-
-    if (scrollY + windowHeight >= documentHeight - 100) {
-      const lastPost = posts.at(-1);
-
-      if (lastPost === undefined) {
-        setLastPostID(null);
-      } else {
-        setLastPostID(lastPost._id);
-      }
-    }
-  };
+  const [hasMore, setHasMore] = useState(true);
+  const theme = useTheme();
 
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
+    getPosts().then((newPosts) => setPosts(newPosts));
+  }, []);
 
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [lastPostID]);
+  const fetchMoreData = () => {
+    const lastPost = posts.at(-1);
 
-  useEffect(() => {
-    // setPosts(async (oldPosts) => {
-    //   return oldPosts;
-    // });
-    if (user === null) {
-      return;
+    if (lastPost === undefined) {
+      return null;
     }
 
-    getPosts(user.accessToken, lastPostID).then((newPosts) => {
+    getPosts({ lastID: lastPost._id }).then((newPosts) => {
+      setHasMore(newPosts.length > 0);
       setPosts((oldPosts) => oldPosts.concat(newPosts));
     });
-  }, [user, lastPostID]);
-
-  const unlistPost = (postID: string) => (): void => {
-    setPosts((oldPosts) => oldPosts.filter((post) => post._id !== postID));
   };
 
   return (
-    <Stack spacing={1.5} sx={{ paddingX: 2, height: "100%" }}>
+    <InfiniteScroll
+      dataLength={posts.length}
+      loader={<h1>Wow</h1>}
+      hasMore={hasMore}
+      next={fetchMoreData}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        paddingLeft: `calc(${theme.spacing()} * 2)`,
+        paddingRight: `calc(${theme.spacing()} * 2)`,
+        gap: `calc(${theme.spacing()} * 1.5)`,
+      }}
+    >
       {posts.map((post) => (
-        <Post
-          key={post._id}
-          postID={post._id}
-          unlistPost={unlistPost(post._id)}
-        />
+        <Post key={post._id} postID={post._id} />
       ))}
-    </Stack>
+    </InfiniteScroll>
   );
 }

@@ -1,4 +1,5 @@
 import { RouterProvider } from "@tanstack/react-router";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { UserProvider, useUser } from "@libs/userContext";
 import { router } from "./router";
 
@@ -15,11 +16,15 @@ const InnerApp = () => {
   return <RouterProvider router={router} context={{ user }} />;
 };
 
+const queryClient = new QueryClient();
+
 const App = () => {
   return (
-    <UserProvider>
-      <InnerApp />
-    </UserProvider>
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <InnerApp />
+      </UserProvider>
+    </QueryClientProvider>
   );
 };
 

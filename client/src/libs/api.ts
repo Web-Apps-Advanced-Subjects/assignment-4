@@ -1,48 +1,39 @@
 import axios from "axios";
 
-export type Posts = { _id: string }[];
+axios.defaults.withCredentials = true;
 
 export type Post = {
   _id: string;
   userID: string;
   content: string;
-  media?: string;
+  media: string | null | undefined;
+};
+export type Posts = Pick<Post, "_id">[];
+
+type PostsFilters = {
+  lastID?: Post["_id"];
+  userID?: UserCredentials["_id"];
 };
 
-export const getPosts = async (
-  accessToken: UserCredentials["accessToken"],
-  lastPostID: Post["_id"] | null
-) => {
+export const getPosts = async (filters: PostsFilters = {}) => {
   let getUrl = "http://localhost:3000/posts?limit=5";
 
-  console.log('getting posts')
-
-  if (lastPostID !== null) {
-    getUrl += `&lastID=${lastPostID}`;
+  if (filters.lastID !== undefined) {
+    getUrl += `&lastID=${filters.lastID}`;
   }
 
-  const { data } = await axios.get<{ posts: Posts }>(getUrl, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `JWT ${accessToken}`,
-    },
-  });
+  if (filters.userID !== undefined) {
+    getUrl += `&userID=${filters.userID}`;
+  }
+
+  const { data } = await axios.get<{ posts: Posts }>(getUrl);
 
   return data.posts;
 };
 
-export const getPostDetails = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
-) => {
+export const getPostDetails = async (postID: Post["_id"]) => {
   const { data } = await axios.get<Post>(
-    `http://localhost:3000/posts/${postID}`,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `JWT ${accessToken}`,
-      },
-    }
+    `http://localhost:3000/posts/${postID}`
   );
 
   return data;
@@ -75,18 +66,123 @@ export const postPost = async (
   return data;
 };
 
-export const getCommentCount = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
+export const generatePostContent = async (
+  accessToken: UserCredentials["accessToken"]
 ) => {
-  const { data } = await axios.get<{ count: number }>(
-    `http://localhost:3000/comments/count?postID=${postID}`,
+  const { data } = await axios.get<string>("http://localhost:3000/gemini", {
+    // headers: {
+    //   Authorization: `JWT ${accessToken}`,
+    // },
+  });
+
+  return data;
+};
+
+export const updatePost = async (
+  accessToken: UserCredentials["accessToken"],
+  postID: Post["_id"],
+  content?: Post["content"],
+  media?: File | null
+) => {
+  const formData = new FormData();
+
+  if (content !== undefined) {
+    formData.append("content", content);
+  }
+
+  if (media !== undefined) {
+    if (media === null) {
+      formData.append("removeMedia", "true");
+    } else {
+      formData.append("media", media);
+    }
+  }
+
+  const { data } = await axios.put<Post>(
+    `http://localhost:3000/posts/${postID}`,
+    formData,
     {
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "multipart/form-data",
         Authorization: `JWT ${accessToken}`,
       },
     }
+  );
+
+  return data;
+};
+
+export const deletePost = async (
+  accessToken: UserCredentials["accessToken"],
+  postID: Post["_id"]
+) => {
+  const { data } = await axios.delete<Post>(
+    `http://localhost:3000/posts/${postID}`,
+    {
+      headers: {
+        Authorization: `JWT ${accessToken}`,
+      },
+    }
+  );
+
+  return data;
+};
+
+export type Comment = {
+  postID: Post["_id"];
+  userID: UserCredentials["_id"];
+  content: string;
+  _id: string;
+};
+export type Comments = Pick<Comment, "_id">[];
+
+type CommentFilters = {
+  userID?: UserCredentials["_id"];
+  notUserID?: UserCredentials["_id"];
+  postID?: Post["_id"];
+  lastID?: Comment["_id"];
+  limit?: number;
+};
+
+export const getComments = async (filters: CommentFilters) => {
+  let getUrl = "http://localhost:3000/comments";
+
+  if (Object.keys(filters).length !== 0) {
+    getUrl += "?";
+
+    if (filters.userID !== undefined) {
+      getUrl += `userID=${filters.userID}&`;
+    }
+    if (filters.notUserID !== undefined) {
+      getUrl += `notUserID=${filters.notUserID}&`;
+    }
+    if (filters.postID !== undefined) {
+      getUrl += `postID=${filters.postID}&`;
+    }
+    if (filters.lastID !== undefined) {
+      getUrl += `lastID=${filters.lastID}&`;
+    }
+    if (filters.limit !== undefined) {
+      getUrl += `limit=${filters.limit}&`;
+    }
+  }
+
+  const { data } = await axios.get<{ comments: Comments }>(getUrl);
+
+  return data.comments;
+};
+
+export const getCommentDetails = async (commentID: Comment["_id"]) => {
+  const { data } = await axios.get<Comment>(
+    `http://localhost:3000/comments/${commentID}`
+  );
+
+  return data;
+};
+
+export const getCommentCount = async (postID: Post["_id"]) => {
+  const { data } = await axios.get<{ count: number }>(
+    `http://localhost:3000/comments/count?postID=${postID}`
   );
 
   return data.count;
@@ -95,7 +191,7 @@ export const getCommentCount = async (
 export const postComment = async (
   accessToken: UserCredentials["accessToken"],
   postID: Post["_id"],
-  content: Post["content"]
+  content: Comment["content"]
 ) => {
   const { data } = await axios.post<void>(
     `http://localhost:3000/comments`,
@@ -125,27 +221,18 @@ export type UserDetails = {
 
 export type User = UserCredentials & UserDetails;
 
-export const getUserDetails = async (
-  accessToken: UserCredentials["accessToken"],
-  userID: UserCredentials["_id"]
-) => {
+export const getUserDetails = async (userID: UserCredentials["_id"]) => {
   const { data } = await axios.get<UserDetails>(
-    `http://localhost:3000/users/${userID}`,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `JWT ${accessToken}`,
-      },
-    }
+    `http://localhost:3000/users/${userID}`
   );
 
   return data;
 };
 
 export const register = async (
-  username: UserDetails['username'],
-  password: UserDetails['password'],
-  email: UserDetails['email'],
+  username: UserDetails["username"],
+  password: UserDetails["password"],
+  email: UserDetails["email"],
   avatar: File
 ) => {
   const formData = new FormData();
@@ -165,19 +252,19 @@ export const register = async (
 };
 
 export const login = async (
-  username: UserDetails["username"],
+  email: UserDetails["email"],
   password: UserDetails["password"]
 ) => {
   const { data } = await axios.post<UserCredentials>(
     "http://localhost:3000/users/login",
-    { username, password },
+    { email, password },
     { headers: { "Content-Type": "application/json" } }
   );
 
   return data;
 };
 
-export const logout = async (refreshToken: UserCredentials["accessToken"]) => {
+export const logout = async (refreshToken: UserCredentials["refreshToken"]) => {
   await axios.post<void>(
     "http://localhost:3000/users/logout",
     { refreshToken },
@@ -185,18 +272,50 @@ export const logout = async (refreshToken: UserCredentials["accessToken"]) => {
   );
 };
 
-export const getLikeCount = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
+export const refreshToken = async (
+  refreshToken: UserCredentials["refreshToken"]
 ) => {
-  const { data } = await axios.get<{ count: number }>(
-    `http://localhost:3000/likes/count/${postID}`,
+  const { data } = await axios.post<UserCredentials>(
+    "http://localhost:3000/users/refresh-token",
+    { refreshToken },
+    { headers: { "Content-Type": "application/json" } }
+  );
+
+  return data;
+};
+
+export const updateUser = async (
+  accessToken: UserCredentials["accessToken"],
+  username?: UserDetails["username"],
+  avatar?: File
+) => {
+  const formData = new FormData();
+
+  if (username !== undefined) {
+    formData.append("username", username);
+  }
+
+  if (avatar !== undefined) {
+    formData.append("avatar", avatar);
+  }
+
+  const { data } = await axios.put<UserDetails>(
+    "http://localhost:3000/users",
+    formData,
     {
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "multipart/form-data",
         Authorization: `JWT ${accessToken}`,
       },
     }
+  );
+
+  return data;
+};
+
+export const getLikeCount = async (postID: Post["_id"]) => {
+  const { data } = await axios.get<{ count: number }>(
+    `http://localhost:3000/likes/count/${postID}`
   );
 
   return data.count;

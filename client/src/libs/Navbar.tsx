@@ -96,16 +96,19 @@ function Navbar(props: NavbarProps) {
               </ListItemButtonLink>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButtonLink
-                to="/profile"
-                activeOptions={{ exact: true }}
-                activeProps={{ selected: true }}
-              >
-                <ListItemIcon>
-                  <ProfileIcon />
-                </ListItemIcon>
-                <ListItemText primary={"Profile"} />
-              </ListItemButtonLink>
+              {user && (
+                <ListItemButtonLink
+                  to="/users/$userID"
+                  params={{ userID: user._id }}
+                  activeOptions={{ exact: true }}
+                  activeProps={{ selected: true }}
+                >
+                  <ListItemIcon>
+                    <ProfileIcon />
+                  </ListItemIcon>
+                  <ListItemText primary={"Profile"} />
+                </ListItemButtonLink>
+              )}
             </ListItem>
           </List>
         </Box>

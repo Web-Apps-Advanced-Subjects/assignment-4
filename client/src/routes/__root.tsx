@@ -4,6 +4,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { type UserContext } from "@libs/userContext";
+import NotFound from "@libs/NotFound";
 
 type RouterContext = {
   user: UserContext["user"];
@@ -11,6 +12,7 @@ type RouterContext = {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
+  notFoundComponent: NotFound,
 });
 
 const darkTheme = createTheme({
@@ -25,9 +27,8 @@ function RootComponent() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-      </QueryClientProvider>
+
+      <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
     </ThemeProvider>
   );

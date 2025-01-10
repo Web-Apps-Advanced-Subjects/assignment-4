@@ -42,27 +42,17 @@ const CommentButton = (props: CommentButtonProps) => {
   const queryClient = useQueryClient();
 
   const { data: postOwnerDetails } = useQuery({
-    queryKey: [user, userID],
+    queryKey: [userID],
     queryFn: () => {
-      if (user === null) {
-        throw new Error("should never be called with unknown user");
-      }
-
-      return getUserDetails(user.accessToken, userID);
+      return getUserDetails(userID);
     },
-    enabled: user !== undefined,
   });
 
   const { data: commentCount } = useQuery({
-    queryKey: ["commentCount", user, postID],
+    queryKey: ["commentCount", postID],
     queryFn: () => {
-      if (user === null) {
-        throw new Error("should never be called with unknown user");
-      }
-
-      return getCommentCount(user.accessToken, postID);
+      return getCommentCount(postID);
     },
-    enabled: user !== undefined,
   });
 
   const { mutate: postComment } = useMutation({
@@ -105,8 +95,12 @@ const CommentButton = (props: CommentButtonProps) => {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
-            queryKey: ["commentCount", user, postID],
+            queryKey: ["commentCount", postID],
           });
+          queryClient.invalidateQueries({
+            queryKey: ["comments", user, postID],
+          });
+          setReply("");
           setCommentDialogOpen(false);
         },
       }

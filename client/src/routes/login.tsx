@@ -58,7 +58,6 @@ function Login() {
     <Box sx={{ width: "100%", height: "100%" }}>
       <Grid
         container
-        // spacing={2}
         sx={{
           justifyContent: "center",
           alignItems: "center",

@@ -30,7 +30,6 @@ function HomeLayoutComponent() {
     <Box
       sx={{
         width: "100%",
-        height: "100%",
         overflowX: "hidden",
         paddingY: 2,
       }}
@@ -53,7 +52,7 @@ function HomeLayoutComponent() {
             <Navbar sx={{ height: "100%", paddingY: 2 }} />
           </Drawer>
         </Grid>
-        <Grid size={3.5} sx={{height: "100%"}}>
+        <Grid size={3.5}>
           <Outlet />
         </Grid>
         <Grid size={rightGridSize}>

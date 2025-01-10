@@ -1,104 +1,240 @@
 import MoreIcon from "@mui/icons-material/MoreVert";
-import { IconButton, IconButtonProps, Menu, MenuItem } from "@mui/material";
-import LikeIcon from "@mui/icons-material/Favorite";
-import NotLikedIcon from "@mui/icons-material/FavoriteBorder";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  CardHeader,
+  CardMedia,
+  ClickAwayListener,
+  Dialog,
+  Grow,
+  IconButton,
+  IconButtonProps,
+  MenuItem,
+  MenuList,
+  Paper,
+  Popper,
+  Stack,
+  TextField,
+} from "@mui/material";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@libs/userContext";
-import axios from "axios";
-import { useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import {
+  deletePost as deletePostApi,
+  updatePost as updatePostApi,
+  Post,
+  UserDetails,
+} from "@libs/api";
+import { useRouter } from "@tanstack/react-router";
+import { buttonBorderRadius } from "@libs/consts";
+import RemoveMediaIcon from "@mui/icons-material/FolderDelete";
+import AddMediaIcon from "@mui/icons-material/UploadFile";
+import VisuallyHiddenInput from "@libs/VisuallyHiddenInput";
 
-type LikeButtonProps = {
-  postID: string;
-  delistPost: (postID: string) => void;
-} & Omit<IconButtonProps, "children" | "onClick">;
+type PostMoreButtonProps = {
+  postID: Post["_id"];
+  content?: Post["content"];
+  media?: Post["media"];
+  avatar?: UserDetails["avatar"];
+} & Omit<
+  IconButtonProps,
+  | "children"
+  | "onClick"
+  | "id"
+  | "aria-controls"
+  | "aria-expanded"
+  | "aria-haspopup"
+  | "ref"
+>;
 
-const LikeButton = (props: LikeButtonProps) => {
-  const { postID, ...restButtonProps } = props;
-
-  const [menuOpen, setMenuOpen] = useState(false);
+const PostMoreButton = (props: PostMoreButtonProps) => {
+  const { postID, content, media, ...restButtonProps } = props;
 
   const { user } = useUser();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchorRef = useRef<HTMLButtonElement>(null);
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editableContent, setEditableContent] = useState(content);
+  const [mediaFile, setMediaFile] = useState<{
+    file: File | null;
+    url: string;
+  } | null>(null);
+
   const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const { data: likeCount } = useQuery({
-    queryKey: ["likeCount", user, postID],
-    queryFn: () => getLikeCount(user?.accessToken, postID),
-    enabled: user !== undefined,
-  });
-
-  const { data: isLiked } = useQuery({
-    queryKey: ["isLiked", user, postID],
-    queryFn: () => getIsLiked(user?.accessToken, postID),
-    enabled: user !== undefined,
-  });
-
-  const { mutate: likePost } = useMutation({
+  const { mutate: deletePost } = useMutation({
     mutationFn: async ({
-      postID,
       accessToken,
+      postID,
     }: {
-      postID: string;
       accessToken: string;
+      postID: string;
     }) => {
-      const { data } = await axios.post<void>(
-        `http://localhost:3000/likes/${postID}`,
-        undefined,
-        {
-          headers: {
-            Authorization: `JWT ${accessToken}`,
-          },
-        }
-      );
-
-      return data;
+      return await deletePostApi(accessToken, postID);
     },
   });
 
-  const { mutate: unLikePost } = useMutation({
+  const { mutate: updatePost } = useMutation({
     mutationFn: async ({
-      postID,
       accessToken,
+      postID,
+      content,
+      media,
     }: {
-      postID: string;
       accessToken: string;
+      postID: string;
+      content?: string;
+      media?: File | null;
     }) => {
-      const { data } = await axios.delete<void>(
-        `http://localhost:3000/likes/${postID}`,
-        {
-          headers: {
-            Authorization: `JWT ${accessToken}`,
-          },
-        }
-      );
-
-      return data;
+      return await updatePostApi(accessToken, postID, content, media);
     },
   });
 
-  const handleLikeClick = async () => {
-    if (user === null || isLiked === undefined) {
+  const handleMenuToggle = () => {
+    setMenuOpen((oldMenuOpen) => !oldMenuOpen);
+  };
+
+  const handleCloseMenu = (event: Event | React.SyntheticEvent) => {
+    if (
+      menuAnchorRef.current &&
+      menuAnchorRef.current.contains(event.target as HTMLElement)
+    ) {
       return;
     }
 
-    let clickFunc: typeof likePost | typeof unLikePost;
+    setMenuOpen(false);
+  };
 
-    if (isLiked) {
-      clickFunc = unLikePost;
-    } else {
-      clickFunc = likePost;
+  const handleDeleteClick = async (event: Event | React.SyntheticEvent) => {
+    if (
+      menuAnchorRef.current &&
+      menuAnchorRef.current.contains(event.target as HTMLElement)
+    ) {
+      return;
     }
 
-    await clickFunc(
+    if (user === null) {
+      return;
+    }
+
+    await deletePost(
       { postID, accessToken: user.accessToken },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: ["likeCount", user, postID],
-          });
-          queryClient.invalidateQueries({
-            queryKey: ["isLiked", user, postID],
-          });
+          setMenuOpen(false);
+          router.history.back();
+        },
+      }
+    );
+  };
+
+  const handleEditClick = (event: Event | React.SyntheticEvent) => {
+    if (
+      menuAnchorRef.current &&
+      menuAnchorRef.current.contains(event.target as HTMLElement)
+    ) {
+      return;
+    }
+
+    setMenuOpen(false);
+    setEditDialogOpen(true);
+    setEditableContent(content);
+    if (media !== undefined && media !== null) {
+      setMediaFile({ file: null, url: `http://localhost:3000/${media}` });
+    } else {
+      setMediaFile(null);
+    }
+  };
+
+  const handleListKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      setMenuOpen(false);
+    } else if (event.key === "Escape") {
+      setMenuOpen(false);
+    }
+  };
+
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
+    setEditableContent(undefined);
+    removeMedia();
+  };
+
+  const handleEditableContentChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    setEditableContent(event.target.value);
+  };
+
+  useEffect(() => {
+    setEditableContent(content);
+  }, [content]);
+
+  const handleUploadMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files === null || event.target.files.length === 0) {
+      return;
+    }
+
+    if (mediaFile !== null && mediaFile.file !== null) {
+      URL.revokeObjectURL(mediaFile.url);
+    }
+
+    const file = event.target.files[0];
+    const url = URL.createObjectURL(file);
+
+    setMediaFile({ file, url });
+  };
+
+  const removeMedia = () => {
+    if (mediaFile !== null && mediaFile.file !== null) {
+      URL.revokeObjectURL(mediaFile.url);
+    }
+
+    setMediaFile(null);
+  };
+
+  const handleRemoveMediaClick = () => {
+    removeMedia();
+  };
+
+  const handleSaveClick = async () => {
+    if (user === null) {
+      return;
+    }
+
+    let updatedMedia: File | undefined | null;
+
+    if (mediaFile === null) {
+      if (media !== undefined && media !== null) {
+        updatedMedia = null;
+      } else {
+        updatedMedia = undefined;
+      }
+    } else {
+      if (mediaFile.file !== null) {
+        updatedMedia = mediaFile.file;
+      } else {
+        updatedMedia = undefined;
+      }
+    }
+
+    await updatePost(
+      {
+        accessToken: user?.accessToken,
+        postID,
+        content: editableContent,
+        media: updatedMedia,
+      },
+      {
+        onSuccess: () => {
+          handleEditDialogClose();
+          queryClient.invalidateQueries({ queryKey: ["postDetails", postID] });
         },
       }
     );
@@ -107,26 +243,105 @@ const LikeButton = (props: LikeButtonProps) => {
   return (
     <>
       <IconButton
-        id={`more-button-${postID}`}
-        aria-controls={menuOpen ? `post-menu-${postID}` : undefined}
-        aria-haspopup="true"
+        ref={menuAnchorRef}
+        id={`composition-button-${postID}`}
+        aria-controls={menuOpen ? `composition-menu-${postID}` : undefined}
         aria-expanded={menuOpen ? "true" : undefined}
+        aria-haspopup="true"
+        onClick={handleMenuToggle}
         {...restButtonProps}
       >
         <MoreIcon />
       </IconButton>
-      <Menu
-        id={`post-menu-${postID}`}
+      <Popper
         open={menuOpen}
-        MenuListProps={{
-          "aria-labelledby": `more-button-${postID}`,
-        }}
+        anchorEl={menuAnchorRef.current}
+        role={undefined}
+        placement="bottom-start"
+        transition
+        disablePortal
       >
-        <MenuItem>Edit</MenuItem>
-        <MenuItem color="error">Delete</MenuItem>
-      </Menu>
+        {({ TransitionProps, placement }) => (
+          <Grow
+            {...TransitionProps}
+            style={{
+              transformOrigin:
+                placement === "bottom-start" ? "left top" : "left bottom",
+            }}
+          >
+            <Paper>
+              <ClickAwayListener onClickAway={handleCloseMenu}>
+                <MenuList
+                  autoFocusItem={menuOpen}
+                  id={`composition-menu-${postID}`}
+                  aria-labelledby={`composition-button-${postID}`}
+                  onKeyDown={handleListKeyDown}
+                >
+                  <MenuItem onClick={handleEditClick}>Edit</MenuItem>
+                  <MenuItem onClick={handleDeleteClick}>Delete</MenuItem>
+                </MenuList>
+              </ClickAwayListener>
+            </Paper>
+          </Grow>
+        )}
+      </Popper>
+      <Dialog open={editDialogOpen} onClose={handleEditDialogClose}>
+        <Card>
+          <CardHeader title="Edit" />
+          <CardContent>
+            <TextField
+              slotProps={{ inputLabel: { shrink: true } }}
+              label="content"
+              multiline
+              fullWidth
+              value={editableContent}
+              onChange={handleEditableContentChange}
+            />
+          </CardContent>
+          {mediaFile && (
+            <CardMedia
+              component="img"
+              image={mediaFile.url}
+              sx={{ padding: 2 }}
+            />
+          )}
+          <CardActions>
+            <Stack
+              direction="row"
+              sx={{
+                width: "100%",
+                justifyContent: "space-between",
+                padding: 1,
+              }}
+            >
+              <Stack direction="row" sx={{ justifyContent: "flex-start" }}>
+                <IconButton component="label" role={undefined} tabIndex={-1}>
+                  <VisuallyHiddenInput
+                    type="file"
+                    accept="image/png, image/jpeg"
+                    onChange={handleUploadMediaChange}
+                  />
+                  <AddMediaIcon />
+                </IconButton>
+                {mediaFile && (
+                  <IconButton onClick={handleRemoveMediaClick}>
+                    <RemoveMediaIcon />
+                  </IconButton>
+                )}
+              </Stack>
+              <Button
+                variant="contained"
+                sx={{ textTransform: "none", borderRadius: buttonBorderRadius }}
+                onClick={handleSaveClick}
+              >
+                Save
+              </Button>
+            </Stack>
+          </CardActions>
+        </Card>
+      </Dialog>
     </>
   );
 };
 
-export default LikeButton;
+export default PostMoreButton;

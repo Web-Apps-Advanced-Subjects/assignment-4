@@ -15,7 +15,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { useUser } from "@libs/userContext";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoadingButton } from "@mui/lab";
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import { getUserDetails, login as loginApi } from "@libs/api";
 
 const routeApi = getRouteApi("/login");
@@ -26,10 +26,11 @@ type SignInDialogProps = {
 
 function SignInDialog(props: SignInDialogProps) {
   const { onSignUpClick, onClose, ...restProps } = props;
-  const [username, setUsername] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
 
   const navigate = useNavigate();
+  const router = useRouter();
   const { redirect } = routeApi.useSearch();
 
   const { user, setUser } = useUser();
@@ -40,13 +41,13 @@ function SignInDialog(props: SignInDialogProps) {
     isPending: isPendingLogin,
   } = useMutation({
     mutationFn: async ({
-      username,
+      email,
       password,
     }: {
-      username: string;
+      email: string;
       password: string;
     }) => {
-      return loginApi(username, password);
+      return loginApi(email, password);
     },
   });
 
@@ -57,13 +58,13 @@ function SignInDialog(props: SignInDialogProps) {
         throw new Error("should never be called with unknown user");
       }
 
-      return getUserDetails(userCredentials.accessToken, userCredentials._id);
+      return getUserDetails(userCredentials._id);
     },
     enabled: userCredentials !== undefined,
   });
 
   const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setUsername(event.target.value);
+    setEmail(event.target.value);
   };
 
   const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +72,7 @@ function SignInDialog(props: SignInDialogProps) {
   };
 
   const handleClickSignin = async () => {
-    await login({ username, password });
+    await login({ email, password });
   };
 
   const handleClose = (
@@ -82,7 +83,7 @@ function SignInDialog(props: SignInDialogProps) {
       onClose(event, reason);
     }
 
-    setUsername("");
+    setEmail("");
     setPassword("");
   };
 
@@ -94,9 +95,13 @@ function SignInDialog(props: SignInDialogProps) {
 
   useEffect(() => {
     if (user !== null) {
-      navigate({ to: redirect ?? "/home" });
+      if (redirect !== undefined) {
+        router.history.push(redirect);
+      } else {
+        navigate({ to: "/home" });
+      }
     }
-  }, [user, redirect, navigate]);
+  }, [user, redirect, router, navigate]);
 
   return (
     <Dialog {...restProps} onClose={handleClose}>
@@ -148,10 +153,10 @@ function SignInDialog(props: SignInDialogProps) {
             </Button>
             <Divider>or</Divider>
             <TextField
-              label="username"
+              label="email"
               slotProps={{ inputLabel: { shrink: true } }}
-              value={username}
-              autoComplete="current-username"
+              value={email}
+              autoComplete="current-email"
               onChange={handleUsernameChange}
             />
             <TextField
