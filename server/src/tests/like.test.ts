@@ -6,7 +6,6 @@ import path from 'path';
 
 import initApp from '../server';
 import { type Post, postModel, userModel, type User, type Like, likeModel } from '../models';
-import { title } from 'node:process';
 
 let app: Express;
 
@@ -46,7 +45,6 @@ beforeEach(async () => {
   response = await request(app)
     .post('/posts')
     .set({ authorization: 'JWT ' + testUser.refreshToken })
-    .field('title', testPost.title)
     .field('content', testPost.content)
     .attach('media', testPost.media);
   const { _id } = response.body;
@@ -84,7 +82,6 @@ const testUser: Omit<User, '_id' | 'tokens'> & { refreshToken: string; accessTok
   accessToken: '',
 };
 const testPost: Required<Pick<Post, 'content' | 'media'>> & Omit<Post, 'userID'> = {
-  title: 'TestPost',
   content: 'Test content',
   media: 'src/tests/fixtures/profile-picture.png',
   _id: '' as unknown as Types.ObjectId,

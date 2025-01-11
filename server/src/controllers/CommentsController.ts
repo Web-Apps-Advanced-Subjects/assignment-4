@@ -1,4 +1,4 @@
-import type { HydratedDocument } from 'mongoose';
+import type { Document, HydratedDocument, QueryWithHelpers, Types } from 'mongoose';
 
 import BaseController from './BaseController';
 
@@ -7,44 +7,60 @@ import type { DeleteMany } from '../types';
 
 type CommentModel = typeof commentModel;
 
+type Filters = {
+  postID?: Types.ObjectId;
+  userID?: Types.ObjectId;
+  lastID?: Types.ObjectId;
+  limit?: number;
+  notUserID?: Types.ObjectId;
+};
+
 class CommentsController extends BaseController<Comment> {
   declare model: CommentModel;
   constructor() {
     super(commentModel);
   }
 
-  async getAllByPostID(postID: Comment['postID']): Promise<HydratedDocument<Comment>[]> {
-    return await this.model.find().byPostID(postID);
+  async getAll(filters: Filters = {}): Promise<Pick<HydratedDocument<Comment>, '_id'>[]> {
+    let query;
+    query = this.model.find().select({ id: 1 }).sort({ _id: 'desc' });
+
+    if (filters.postID !== undefined) {
+      query = query.byPostID(filters.postID);
+    }
+
+    if (filters.userID !== undefined) {
+      query = query.byUserID(filters.userID);
+    }
+
+    if (filters.notUserID !== undefined) {
+      query = query.notByUserID(filters.notUserID);
+    }
+
+    if (filters.lastID !== undefined) {
+      query = query.fromLastID(filters.lastID);
+    }
+
+    if (filters.limit !== undefined) {
+      query = query.limit(filters.limit);
+    }
+
+    return await query;
   }
 
-  async getAllByUserID(userID: Comment['userID']): Promise<HydratedDocument<Comment>[]> {
-    return await this.model.find().byUserID(userID);
-  }
+  async getCount(filters: Filters = {}): Promise<number> {
+    let query;
+    query = this.model.find();
 
-  async getAllByUserIDAndPostID(
-    userID: Comment['userID'],
-    postID: Comment['postID'],
-  ): Promise<HydratedDocument<Comment>[]> {
-    return await this.model.find().byUserID(userID).byPostID(postID);
-  }
+    if (filters.postID !== undefined) {
+      query = query.byPostID(filters.postID);
+    }
 
-  async getNumberOfComments(): Promise<number> {
-    return await this.model.countDocuments();
-  }
+    if (filters.userID !== undefined) {
+      query = query.byUserID(filters.userID);
+    }
 
-  async getCountByPostID(postID: Comment['postID']): Promise<number> {
-    return await this.model.find().byPostID(postID).countDocuments();
-  }
-
-  async getCountByUserID(userID: Comment['userID']): Promise<number> {
-    return await this.model.find().byUserID(userID).countDocuments();
-  }
-
-  async getCountByUserIDAndPostID(
-    userID: Comment['userID'],
-    postID: Comment['postID'],
-  ): Promise<number> {
-    return await this.model.find().byUserID(userID).byPostID(postID).countDocuments();
+    return await query.countDocuments();
   }
 
   async deleteByPostID(postID: Comment['postID']): Promise<DeleteMany> {

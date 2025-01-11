@@ -17,14 +17,18 @@ class UsersController extends BaseController<User> {
   async findOneByUsername(username: User['username']): Promise<HydratedDocument<User> | null> {
     return await this.model.find().byUsername(username);
   }
+  
+  async findOneByEmail(email: User['email']): Promise<HydratedDocument<User> | null> {
+    return await this.model.find().byEmail(email);
+  }
 
   generateTokens(_id: User['_id']): { accessToken: string; refreshToken: string } {
     const random = Math.random();
 
-    const accessToken = jwt.sign({ _id, random }, process.env.TOKEN_SECRET as string, {
+    const accessToken = jwt.sign({ _id, random }, process.env.ACCESS_TOKEN_SECRET as string, {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRES as string,
     });
-    const refreshToken = jwt.sign({ _id, random }, process.env.TOKEN_SECRET as string, {
+    const refreshToken = jwt.sign({ _id, random }, process.env.REFRESH_TOKEN_SECRET as string, {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRES as string,
     });
 
@@ -33,7 +37,7 @@ class UsersController extends BaseController<User> {
 
   verifyRefreshToken(refreshToken: string): Promise<HydratedDocument<User>> {
     return new Promise<HydratedDocument<User>>((resolve, reject) => {
-      jwt.verify(refreshToken, process.env.TOKEN_SECRET as string, async (err, userInfo) => {
+      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET as string, async (err, userInfo) => {
         // @ts-expect-error no proper way to type inference to userInfo returned inside the cb
         const userID = userInfo._id;
 

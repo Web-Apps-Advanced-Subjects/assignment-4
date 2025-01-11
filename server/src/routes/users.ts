@@ -5,10 +5,13 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
+import { OAuth2Client } from 'google-auth-library';
 
 import { usersController } from '../controllers';
 import { authenticate } from '../middleware';
 import { type User } from '../models';
+import { finished } from 'stream/promises';
+import { Readable } from 'stream';
 
 const asyncUnlink = promisify(fs.unlink);
 const storage = multer.diskStorage({
@@ -43,63 +46,57 @@ const router = express.Router();
  * @swagger
  * components:
  *   schemas:
- *     BaseUser:
+ *
+ *     Username:
  *       type: object
  *       properties:
  *         username:
  *           type: string
  *           description: The user username
- *         password:
- *           type: string
- *           description: The user password
  *       example:
  *         username: 'bob'
- *         password: 'pass'
- *     BaseRestUser:
+ *
+ *     Password:
+ *        type: object
+ *        required:
+ *          - password
+ *        properties:
+ *          password:
+ *            type: string
+ *            description: The user password
+ *        example:
+ *          password: 'pass'
+ *
+ *     Avatar:
  *       type: object
  *       properties:
- *         email:
+ *         avatar:
  *           type: string
- *           description: The user email
+ *           description: The user avatar location on the server
+ *       example:
+ *         avatar: '/public/avatar/profile.png'
+ *
+ *     UploadAvatar:
+ *       type: object
+ *       properties:
  *         avatar:
  *           type: string
  *           format: binary
- *           description: The user avatar picture
+ *           description: The user avatar picture file
  *       example:
- *         email: 'bob@gmail.com'
- *         avatar: 123.png
- *     PartialUser:
- *       allOf:
- *       - $ref: '#/components/schemas/BaseUser'
- *       - $ref: '#/components/schemas/BaseRestUser'
- *     User:
- *       allOf:
- *       - $ref: '#/components/schemas/PartialUser'
+ *         avatar: 'picture.png'
+ *
+ *     Email:
+ *       type: object
  *       required:
- *         - username
- *         - password
  *         - email
- *         - avatar
- *     DBUser:
- *       allOf:
- *       - $ref: '#/components/schemas/User'
- *       - $ref: '#/components/schemas/UserID'
- *       - type: object
- *         required:
- *           - _id
- *           - tokens
- *         properties:
- *           _id:
- *             type: string
- *             description: The user id
- *           tokens:
- *             type: array
- *             items:
- *               type: string
- *               description: The user access tokens
- *         example:
- *           _id: '6777cbe51ead7054a6a78d74'
- *           tokens: ['eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh']
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The user email account
+ *       example:
+ *         email: 'user@gmail.com'
+ *
  *     UserID:
  *       type: object
  *       required:
@@ -110,6 +107,7 @@ const router = express.Router();
  *           description: The user id
  *       example:
  *         _id: '6777cbe51ead7054a6a78d74'
+ *
  *     RefreshToken:
  *       type: object
  *       required:
@@ -119,7 +117,40 @@ const router = express.Router();
  *           type: string
  *           description: The user generated refresh token
  *       example:
- *         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+ *         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV9'
+ *
+ *     DBUser:
+ *       allOf:
+ *       - $ref: '#/components/schemas/Username'
+ *       - $ref: '#/components/schemas/Email'
+ *       - $ref: '#/components/schemas/Avatar'
+ *       - $ref: '#/components/schemas/UserID'
+ *       - type: object
+ *         required:
+ *           - _id
+ *         properties:
+ *           _id:
+ *             type: string
+ *             description: The user id
+ *         example:
+ *           _id: '6777cbe51ead7054a6a78d74'
+ *       required:
+ *         - username
+ *         - avatar
+ *
+ *     Credentials:
+ *       allOf:
+ *       - $ref: '#/components/schemas/UserID'
+ *       - $ref: '#/components/schemas/RefreshToken'
+ *       - type: object
+ *         required:
+ *           - accessToken
+ *         properties:
+ *           accessToken:
+ *             type: string
+ *             description: The user generated access token
+ *         example:
+ *           accessToken: 'eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh'
  */
 
 /**
@@ -133,7 +164,14 @@ const router = express.Router();
  *       content:
  *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/User'
+ *             allOf:
+ *             - $ref: '#/components/schemas/Username'
+ *             - $ref: '#/components/schemas/Password'
+ *             - $ref: '#/components/schemas/Email'
+ *             - $ref: '#/components/schemas/UploadAvatar'
+ *             required:
+ *               - avatar
+ *               - username
  *     responses:
  *       201:
  *         description: The new user
@@ -181,12 +219,12 @@ router.post('/register', upload.single('avatar'), async (req, res) => {
   }
 
   try {
-    let user = await usersController.findOneByUsername(username);
+    let user = await usersController.findOneByEmail(email);
 
     if (user !== null) {
       await asyncUnlink(file.path);
 
-      res.status(409).send('Username Taken');
+      res.status(409).send('Email Taken');
       return;
     }
 
@@ -202,7 +240,9 @@ router.post('/register', upload.single('avatar'), async (req, res) => {
       tokens: [],
     });
 
-    res.status(201).send(user);
+    res
+      .status(201)
+      .send({ _id: user._id, username: user.username, avatar: user.avatar, email: user.email });
   } catch (err) {
     await asyncUnlink(file.path);
 
@@ -221,25 +261,16 @@ router.post('/register', upload.single('avatar'), async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/BaseUser'
+ *             allOf:
+ *             - $ref: '#/components/schemas/Email'
+ *             - $ref: '#/components/schemas/Password'
  *     responses:
  *       200:
  *         description: User session credentials
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *               - $ref: '#/components/schemas/UserID'
- *               - $ref: '#/components/schemas/RefreshToken'
- *               - type: object
- *                 required:
- *                   - accessToken
- *                 properties:
- *                   accessToken:
- *                     type: string
- *                     description: The user generated access token
- *                 example:
- *                   accessToken: 'eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh'
+ *               $ref: '#/components/schemas/Credentials'
  *       400:
  *         description: Missing arguments
  *         content:
@@ -255,14 +286,14 @@ router.post('/register', upload.single('avatar'), async (req, res) => {
  */
 
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  if (username === undefined || password === undefined) {
+  if (email === undefined || password === undefined) {
     res.status(400).send('Missing Arguments');
     return;
   }
 
-  const user = await usersController.findOneByUsername(username);
+  const user = await usersController.findOneByEmail(email);
 
   if (user === null) {
     res.status(401).json({ error: 'Authentication failed' });
@@ -281,6 +312,64 @@ router.post('/login', async (req, res) => {
   await user.save();
 
   res.status(200).send({ accessToken, refreshToken, _id: user._id });
+});
+
+const client = new OAuth2Client();
+
+router.post('/google-login', async (req, res) => {
+  const { credential } = req.body;
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: '730785686819-6drdihn4664d094p8ohrj4hk9vfo3f0r.apps.googleusercontent.com',
+    });
+
+    const payload = ticket.getPayload();
+
+    const email = payload?.email as string;
+    let user = await usersController.findOneByEmail(email);
+
+    if (user === null) {
+      if (payload?.picture === undefined || payload.name === undefined) {
+        res.sendStatus(500);
+        return;
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('google-signin', salt);
+
+      const avatarRes = await fetch(payload.picture);
+
+      if (avatarRes.body === null) {
+        res.sendStatus(500);
+        return;
+      }
+
+      const avatar = `public/avatars/${Date.now()}.jpg`
+      const systemPath = path.resolve('public/avatars/', `${Date.now()}.jpg`);
+      const fileStream = fs.createWriteStream(systemPath, { flags: 'wx' });
+      await finished(Readable.fromWeb(avatarRes.body).pipe(fileStream));
+
+      user = await usersController.create({
+        username: payload.name,
+        password: hashedPassword,
+        email,
+        avatar,
+        tokens: [],
+      });
+    }
+
+    const { accessToken, refreshToken } = usersController.generateTokens(user._id);
+    user.tokens.push(refreshToken);
+    await user.save();
+
+    res.status(200).send({ accessToken, refreshToken, _id: user._id });
+    return;
+  } catch (err) {
+    res.status(500).send();
+    return;
+  }
 });
 
 /**
@@ -347,18 +436,7 @@ router.post('/logout', async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *               - $ref: '#/components/schemas/UserID'
- *               - $ref: '#/components/schemas/RefreshToken'
- *               - type: object
- *                 required:
- *                   - accessToken
- *                 properties:
- *                   accessToken:
- *                     type: string
- *                     description: The user generated access token
- *                 example:
- *                   accessToken: 'eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh'
+ *               $ref: '#/components/schemas/Credentials'
  *       400:
  *         description: Missing arguments
  *         content:
@@ -407,18 +485,12 @@ router.post('/refresh-token', async (req, res) => {
  *       content:
  *         multipart/form-data:
  *           schema:
- *             type: object
- *             properties:
- *               username:
- *                 type: string
- *                 description: New username
- *               avatar:
- *                 type: string
- *                 format: binary
- *                 description: New avatar
+ *             allOf:
+ *             - $ref: '#/components/schemas/Username'
+ *             - $ref: '#/components/schemas/UploadAvatar'
  *     responses:
  *       200:
- *         description: User session credentials
+ *         description: The old user data
  *         content:
  *           application/json:
  *             schema:
@@ -431,6 +503,12 @@ router.post('/refresh-token', async (req, res) => {
  *               type: string
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       404:
+ *         description: User does not exist
  *         content:
  *           text/plain:
  *             schema:
@@ -450,36 +528,50 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
   const userID = req.user._id;
   const params: Partial<User> = {};
 
+  const oldUser = await usersController.findById(userID);
+
+  if (oldUser === null) {
+    res.status(404).send('User does not exist');
+    return;
+  }
+
+  if (oldUser._id.toJSON() !== userID) {
+    res.sendStatus(403);
+    return;
+  }
+
   if (username === undefined && file === undefined) {
     res.status(400).send('Missing Arguments');
     return;
   }
 
   if (username !== undefined) {
-    let userCheck = await usersController.findOneByUsername(username);
-
-    if (userCheck !== null) {
-      res.status(409).send('Username Taken');
-      return;
-    }
-
     params['username'] = username;
   }
 
   if (file !== undefined) {
+    if (file.mimetype !== 'image/png' && file.mimetype !== 'image/jpeg') {
+      await asyncUnlink(file.path);
+
+      res.status(400).send('File Type Unsupported');
+      return;
+    }
+
     params['avatar'] = file.path.replaceAll(path.sep, path.posix.sep);
   }
 
-  const oldUser = await usersController.findById(userID);
-
   try {
-    const user = await usersController.update(userID, params);
+    let user = await usersController.update(userID, params);
+    // user has to exist, we found it earlier
+    user = user as unknown as Exclude<typeof user, null>;
 
-    if (file !== undefined && oldUser !== null) {
+    if (file !== undefined) {
       await asyncUnlink(oldUser.avatar);
     }
 
-    res.status(200).send(user);
+    res
+      .status(200)
+      .send({ _id: user._id, username: user.username, avatar: user.avatar, email: user.email });
   } catch (err) {
     if (file !== undefined) {
       await asyncUnlink(file.path);
@@ -487,6 +579,58 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
 
     throw err;
   }
+});
+
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get user data
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         type: string
+ *         description: The id of the post to update
+ *     responses:
+ *       200:
+ *         description: The user data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DBUser'
+ *       400:
+ *         description: Missing arguments
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Authentication failed
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+
+router.get('/:id', async (req, res) => {
+  // @ts-expect-error "user" was patched to the req object from the auth middleware
+  const id = req.params.id as unknown as Types.ObjectId;
+  const params: Partial<User> = {};
+
+  const user = await usersController.findById(id);
+
+  if (user === null) {
+    res.status(404).send('User does not exist');
+    return;
+  }
+
+  res
+    .status(200)
+    .send({ _id: user._id, username: user.username, avatar: user.avatar, email: user.email });
 });
 
 export default router;

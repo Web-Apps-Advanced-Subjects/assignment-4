@@ -331,7 +331,7 @@ describe('User Tests', () => {
       .field('password', testUser.password)
       .attach('avatar', testUser.avatar);
 
-    const newUserName = testUser.username + "a"
+    const newUserName = testUser.username + 'a';
 
     await request(app)
       .post(baseUrl + '/register')
@@ -344,11 +344,11 @@ describe('User Tests', () => {
       .post(baseUrl + '/login')
       .send({ username: testUser.username, password: testUser.password });
 
-    const { refreshToken } = response.body;
+    const { accessToken } = response.body;
 
     response = await request(app)
       .put(baseUrl)
-      .set({ authorization: 'JWT ' + refreshToken })
+      .set({ authorization: 'JWT ' + accessToken })
       .send({ username: newUserName });
     expect(response.statusCode).toBe(409);
   });
@@ -365,12 +365,12 @@ describe('User Tests', () => {
       .post(baseUrl + '/login')
       .send({ username: testUser.username, password: testUser.password });
 
-    const { refreshToken } = response.body;
+    const { accessToken } = response.body;
     const newUsername = testUser.username + 'a';
 
     response = await request(app)
       .put(baseUrl)
-      .set({ authorization: 'JWT ' + refreshToken })
+      .set({ authorization: 'JWT ' + accessToken })
       .send({ username: newUsername });
 
     expect(response.statusCode).toBe(200);
@@ -393,11 +393,11 @@ describe('User Tests', () => {
       .post(baseUrl + '/login')
       .send({ username: testUser.username, password: testUser.password });
 
-    const { refreshToken } = response.body;
+    const { accessToken } = response.body;
 
     response = await request(app)
       .put(baseUrl)
-      .set({ authorization: 'JWT ' + refreshToken })
+      .set({ authorization: 'JWT ' + accessToken })
       .attach('avatar', testUser.avatar);
 
     expect(response.statusCode).toBe(200);

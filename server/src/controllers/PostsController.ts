@@ -11,6 +11,7 @@ type PostModel = typeof postModel;
 type Filters = {
   limit?: number;
   lastID?: Types.ObjectId;
+  userID?: Types.ObjectId;
 };
 
 class PostsController extends BaseController<Post> {
@@ -20,35 +21,17 @@ class PostsController extends BaseController<Post> {
     super(postModel);
   }
 
-  async getAll(filters: Filters = {}): Promise<HydratedDocument<Post>[]> {
+  async getAll(filters: Filters = {}): Promise<Pick<HydratedDocument<Post>, '_id'>[]> {
     let query;
+    query = this.model.find().sort({ _id: 'desc' }).select({ _id: 1 });
+
+    if (filters.userID !== undefined) {
+      query = query.byUserID(filters.userID);
+    }
 
     if (filters.lastID !== undefined) {
-      query = this.model.find({ _id: { $gt: filters.lastID } });
-    } else {
-      query = this.model.find();
+      query = query.fromLastID(filters.lastID);
     }
-
-    if (filters.limit !== undefined) {
-      query = query.limit(filters.limit);
-    }
-
-    return await query;
-  }
-
-  async getAllByUserID(
-    userID: Post['userID'],
-    filters: Filters = {},
-  ): Promise<HydratedDocument<Post>[]> {
-    let query;
-
-    if (filters.lastID !== undefined) {
-      query = this.model.find({ _id: { $gt: filters.lastID } });
-    } else {
-      query = this.model.find();
-    }
-
-    query = query.byUserID(userID);
 
     if (filters.limit !== undefined) {
       query = query.limit(filters.limit);

@@ -6,7 +6,6 @@ import path from 'path';
 
 import initApp from '../server';
 import { type Post, postModel, userModel, type User } from '../models';
-import { title } from 'node:process';
 
 let app: Express;
 
@@ -73,17 +72,16 @@ const testUser: Omit<User, '_id' | 'tokens'> & { refreshToken: string; accessTok
   accessToken: '',
 };
 const testPost: Required<Pick<Post, 'content' | 'media'>> & Omit<Post, 'userID' | '_id'> = {
-  title: 'TestPost',
   content: 'Test content',
   media: 'src/tests/fixtures/profile-picture.png',
 };
 
 describe('Post Tests', () => {
-  test('Post test post post with only title', async () => {
+  test('Post test post post with only content', async () => {
     const response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .send({ title: testPost.title });
+      .send({ content: testPost.content });
     expect(response.statusCode).toBe(201);
   });
 
@@ -91,7 +89,6 @@ describe('Post Tests', () => {
     const response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
     expect(response.statusCode).toBe(201);
@@ -100,17 +97,15 @@ describe('Post Tests', () => {
   test('Post test fail post post without auth', async () => {
     const response = await request(app)
       .post(baseUrl)
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
     expect(response.statusCode).toBe(401);
   });
 
-  test('Post test fail post post without title', async () => {
+  test('Post test fail post post without content', async () => {
     const response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('content', testPost.content)
       .attach('media', testPost.media);
     expect(response.statusCode).toBe(400);
   });
@@ -119,7 +114,6 @@ describe('Post Tests', () => {
     await request(app)
       .get(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -131,14 +125,12 @@ describe('Post Tests', () => {
     await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
     await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -171,14 +163,12 @@ describe('Post Tests', () => {
     await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + newTestUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
     await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -193,7 +183,6 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -207,7 +196,6 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -227,7 +215,6 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -243,7 +230,6 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -258,14 +244,12 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
     let { _id, media: oldMedia } = response.body;
 
     const updatedPost: typeof testPost = {
-      title: testPost.title + 'a',
       content: testPost.content + 'a',
       media: testPost.media,
     };
@@ -273,7 +257,6 @@ describe('Post Tests', () => {
     response = await request(app)
       .put(`${baseUrl}/${_id}`)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', updatedPost.title)
       .field('content', updatedPost.content)
       .attach('media', updatedPost.media);
     expect(response.statusCode).toBe(200);
@@ -283,14 +266,12 @@ describe('Post Tests', () => {
       .set({ authorization: 'JWT ' + testUser.refreshToken });
     expect(response.body.media).not.toBe(oldMedia);
     expect(response.body.content).toBe(updatedPost.content);
-    expect(response.body.title).toBe(updatedPost.title);
   });
 
   test('Post test fail delete post without auth', async () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -305,7 +286,6 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 
@@ -348,7 +328,6 @@ describe('Post Tests', () => {
     let response = await request(app)
       .post(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .field('title', testPost.title)
       .field('content', testPost.content)
       .attach('media', testPost.media);
 

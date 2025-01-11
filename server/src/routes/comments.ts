@@ -103,18 +103,13 @@ const router = express.Router();
  *               type: string
  */
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', async (req, res) => {
   const postID = req.query.postID as unknown as Types.ObjectId | undefined;
   const userID = req.query.userID as unknown as Types.ObjectId | undefined;
-  let comments: HydratedDocument<Comment>[];
-
-  if (postID !== undefined) {
-    comments = await commentsController.getAllByPostID(postID);
-  } else if (userID !== undefined) {
-    comments = await commentsController.getAllByUserID(userID);
-  } else {
-    comments = await commentsController.getAll();
-  }
+  const notUserID = req.query.notUserID as unknown as Types.ObjectId | undefined;
+  const limit = req.query.limit as unknown as number | undefined;
+  const lastID = req.query.lastID as unknown as Types.ObjectId | undefined;
+  const comments = await commentsController.getAll({ userID, postID, lastID, limit, notUserID });
 
   res.status(200).json({ comments });
 });
@@ -153,7 +148,7 @@ router.get('/', authenticate, async (req, res) => {
  *                     description: the comment count
  *                 example:
  *                   count: 47
- *                   
+ *
  *       401:
  *         description: Not authenticated
  *         content:
@@ -162,21 +157,10 @@ router.get('/', authenticate, async (req, res) => {
  *               type: string
  */
 
-router.get('/count', authenticate, async (req, res) => {
+router.get('/count', async (req, res) => {
   const postID = req.query.postID as unknown as Types.ObjectId | undefined;
   const userID = req.query.userID as unknown as Types.ObjectId | undefined;
-  let count: number;
-
-  if (postID === undefined && userID === undefined) {
-    count = await commentsController.getNumberOfComments();
-  } else if (postID !== undefined && userID === undefined) {
-    count = await commentsController.getCountByPostID(postID);
-  } else if (postID === undefined && userID !== undefined) {
-    count = await commentsController.getCountByUserID(userID);
-  } else {
-    // @ts-expect-error ts cannot narrow down that userID and postID HAVE to be undefined at this point
-    count = await commentsController.getCountByUserIDAndPostID(userID, postID);
-  }
+  let count = await commentsController.getCount({ postID, userID });
 
   res.status(200).json({ count });
 });
@@ -216,7 +200,7 @@ router.get('/count', authenticate, async (req, res) => {
  *               type: string
  */
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
   const post = await commentsController.findById(id);
 
@@ -277,39 +261,39 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 /**
-* @swagger
-* /comments/{id}:
-*   put:
-*     summary: Update comment
-*     tags: [Comments]
-*     security:
-*       - bearerAuth: []
-*     parameters:
-*       - in: path
-*         name: id
-*         required: true
-*         type: string
-*         description: The id of the comment to update
-*     requestBody:
-*       required: true
-*       content:
-*         application/json:
-*           schema:
-*             $ref: '#/components/schemas/PartialComment'
-*     responses:
-*       200:
-*         description: The old updated comment
-*         content:
-*           application/json:
-*             schema:
-*               $ref: '#/components/schemas/DBComment'
-*       401:
-*         description: Not authenticated
-*         content:
-*           text/plain:
-*             schema:
-*               type: string
-*/
+ * @swagger
+ * /comments/{id}:
+ *   put:
+ *     summary: Update comment
+ *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         type: string
+ *         description: The id of the comment to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PartialComment'
+ *     responses:
+ *       200:
+ *         description: The old updated comment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DBComment'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
 
 router.put('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;

@@ -12,8 +12,8 @@ class BaseController<T extends BaseModel> {
     this.model = model;
   }
 
-  async getAll(): Promise<HydratedDocument<T>[]> {
-    return await this.model.find();
+  async getAll(): Promise<Pick<HydratedDocument<T>, '_id'>[]> {
+    return await this.model.find().select({ _id: 1 });
   }
 
   async findById(id: T['_id']): Promise<HydratedDocument<T> | null> {
@@ -22,7 +22,7 @@ class BaseController<T extends BaseModel> {
 
   async create(
     datum: T extends { _id: Types.ObjectId } ? Omit<T, '_id'> : T,
-  ): Promise<HydratedDocument<T> | null> {
+  ): Promise<HydratedDocument<T>> {
     return await this.model.create(datum);
   }
 
@@ -31,7 +31,7 @@ class BaseController<T extends BaseModel> {
   }
 
   async update(id: Types.ObjectId, params: Partial<T>) {
-    return await this.model.findByIdAndUpdate(id, params);
+    return await this.model.findByIdAndUpdate(id, params, { new: true });
   }
 }
 

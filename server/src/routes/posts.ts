@@ -43,28 +43,45 @@ const router = express.Router();
  * @swagger
  * components:
  *   schemas:
- *     PartialPost:
+ *     Content:
  *       type: object
  *       properties:
  *         content:
  *           type: string
  *           description: The post text content
- *         media:
- *           type: string
- *           format: binary
- *           description: The post media content
- *         title:
- *             type: string
- *             description: The post title
  *       example:
- *         title: 'Awesome post'
  *         content: 'This post is awesome'
- *         media: 'awesome.png'
+ *
+ *     PartialPost:
+ *       allOf:
+ *       - $ref: '#/components/schemas/Content'
+ *       - type: object
+ *         properties:
+ *           media:
+ *             type: string
+ *             format: binary
+ *             description: The post media content
+ *           removeMedia:
+ *             type: boolean
+ *             description: To remove old media
+ *         example:
+ *           media: 'awesome.png'
+ *
+ *
  *     Post:
  *       allOf:
- *       - $ref: '#/components/schemas/PartialPost'
+ *       - $ref: '#/components/schemas/Content'
+ *       - type: object
+ *         properties:
+ *           media:
+ *             type: string
+ *             format: binary
+ *             description: The post media content
+ *         example:
+ *           media: 'awesome.png'
  *       required:
- *         - title
+ *         - content
+ *
  *     DBPost:
  *       allOf:
  *       - $ref: '#/components/schemas/Post'
@@ -122,20 +139,13 @@ const router = express.Router();
  *               type: string
  */
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', async (req, res) => {
   const userID = req.query.userID as unknown as Types.ObjectId | undefined;
   const limit = req.query.limit as unknown as number | undefined;
   const lastID = req.query.lastID as unknown as Types.ObjectId | undefined;
+  const posts = await postsController.getAll({ limit, lastID, userID });
 
-  if (userID !== undefined) {
-    const posts = await postsController.getAllByUserID(userID, { limit, lastID });
-
-    res.status(200).json({ posts });
-  } else {
-    const posts = await postsController.getAll({ limit, lastID });
-
-    res.status(200).json({ posts });
-  }
+  res.status(200).json({ posts });
 });
 
 /**
@@ -173,10 +183,10 @@ router.get('/', authenticate, async (req, res) => {
  *               type: string
  */
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
-  const post = await postsController.findById(id);
 
+  const post = await postsController.findById(id);
   if (post !== null) {
     res.status(200).send(post);
   } else {
@@ -220,12 +230,12 @@ router.get('/:id', authenticate, async (req, res) => {
  */
 
 router.post('/', authenticate, upload.single('media'), async (req, res) => {
-  const { title, content } = req.body;
+  const { content } = req.body;
   // @ts-expect-error "user" was patched to the req object from the auth middleware
   const userID = req.user._id;
   const file = req.file;
 
-  if (title === undefined) {
+  if (content === undefined) {
     if (file !== undefined) {
       await asyncUnlink(file.path);
     }
@@ -248,7 +258,7 @@ router.post('/', authenticate, upload.single('media'), async (req, res) => {
   }
 
   try {
-    const post = await postsController.create({ title, content, media, userID });
+    const post = await postsController.create({ content, media, userID });
 
     res.status(201).send(post);
   } catch (err) {
@@ -303,17 +313,17 @@ router.post('/', authenticate, upload.single('media'), async (req, res) => {
 
 router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
-  const { title, content } = req.body;
+  const { content, removeMedia } = req.body;
   const file = req.file;
+  // @ts-expect-error "user" was patched to the req object from the auth middleware
+  const userID = req.user._id;
 
   const postParams: Partial<Post> = {};
 
-  if (title !== undefined) {
-    postParams['title'] = title;
-  }
   if (content !== undefined) {
     postParams['content'] = content;
   }
+
   if (file !== undefined) {
     if (file.mimetype !== 'image/png' && file.mimetype !== 'image/jpeg') {
       await asyncUnlink(file.path);
@@ -325,23 +335,29 @@ router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
     postParams['media'] = file.path.replaceAll(path.sep, path.posix.sep);
   }
 
+  if (file === undefined && removeMedia) {
+    postParams['media'] = null as unknown as any;
+  }
+
   const oldPost = await postsController.findById(id);
 
-  try {
-    const post = await postsController.update(id, postParams);
-
-    if (file !== undefined && oldPost?.media !== undefined) {
-      await asyncUnlink(oldPost.media);
-    }
-
-    res.status(200).send(post);
-  } catch (err) {
-    if (file !== undefined) {
-      await asyncUnlink(file.path);
-    }
-
-    throw err;
+  if (oldPost === null) {
+    res.sendStatus(404);
+    return;
   }
+
+  if (oldPost.userID.toString() !== userID) {
+    res.sendStatus(403);
+    return;
+  }
+
+  const post = await postsController.update(id, postParams);
+
+  if (oldPost?.media && 'media' in postParams) {
+    await asyncUnlink(oldPost.media);
+  }
+
+  res.status(200).send(post);
 });
 
 /**
@@ -381,20 +397,28 @@ router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
 
 router.delete('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
+  // @ts-expect-error "user" was patched to the req object from the auth middleware
+  const userID = req.user._id;
 
   const post = await postsController.findById(id);
 
-  if (post !== null) {
-    await postsController.delete(id);
-
-    if (post.media !== undefined) {
-      await asyncUnlink(post.media);
-    }
-
-    res.status(200).send(post);
-  } else {
+  if (post === null) {
     res.status(404).send('Not Found');
+    return;
   }
+
+  if (post.userID.toString() !== userID) {
+    res.sendStatus(403);
+    return;
+  }
+
+  await postsController.delete(id);
+
+  if (post.media !== undefined) {
+    await asyncUnlink(post.media);
+  }
+
+  res.status(200).send(post);
 });
 
 export default router;

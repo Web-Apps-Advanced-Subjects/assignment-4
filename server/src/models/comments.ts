@@ -15,6 +15,12 @@ type CommentQueryHelpers = {
   byUserID(
     userID: Comment['userID'],
   ): QueryWithHelpers<HydratedDocument<Comment>[], HydratedDocument<Comment>, CommentQueryHelpers>;
+  notByUserID(
+    userID: Comment['userID'],
+  ): QueryWithHelpers<HydratedDocument<Comment>[], HydratedDocument<Comment>, CommentQueryHelpers>;
+  fromLastID(
+    _id: Comment['_id'],
+  ): QueryWithHelpers<HydratedDocument<Comment>[], HydratedDocument<Comment>, CommentQueryHelpers>;
 };
 
 type CommentModel = Model<Comment, CommentQueryHelpers>;
@@ -40,6 +46,22 @@ commentSchema.query.byUserID = function byUserID(
   userID: Comment['userID'],
 ) {
   return this.find({ userID });
+};
+
+commentSchema.query.fromLastID = function fromLastID(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  this: QueryWithHelpers<any, HydratedDocument<Comment>, CommentQueryHelpers>,
+  _id: Comment['_id'],
+) {
+  return this.find({ _id: { $lt: _id } });
+};
+
+commentSchema.query.notByUserID = function notByUserID(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  this: QueryWithHelpers<any, HydratedDocument<Comment>, CommentQueryHelpers>,
+  userID: Comment['userID'],
+) {
+  return this.find({ userID: { $ne: userID } });
 };
 
 export default model<Comment, CommentModel>('comments', commentSchema);

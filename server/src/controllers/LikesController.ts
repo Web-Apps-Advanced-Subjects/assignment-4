@@ -12,8 +12,12 @@ class LikesController extends BaseController<Like> {
     super(likeModel);
   }
 
+  async getCountByPostID(postID: Like['_id']['postID']): Promise<number> {
+    return await this.model.find().byPostID(postID).countDocuments();
+  }
+
   async deleteByPostID(postID: Like['_id']['postID']): Promise<DeleteMany> {
-    return await this.model.find({ '_id.postID': postID }).deleteMany();
+    return await this.model.find().byPostID(postID).deleteMany();
   }
 }
 

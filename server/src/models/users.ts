@@ -14,16 +14,19 @@ type UserQueryHelpers = {
   byUsername(
     username: User['username'],
   ): QueryWithHelpers<HydratedDocument<User> | null, HydratedDocument<User>, UserQueryHelpers>;
+  byEmail(
+    username: User['username'],
+  ): QueryWithHelpers<HydratedDocument<User> | null, HydratedDocument<User>, UserQueryHelpers>;
 };
 
 type UserModelType = Model<User, UserQueryHelpers>;
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const UserSchema = new Schema<User, UserModelType, {}, UserQueryHelpers>({
-  username: { type: String, required: true, unique: true },
+  username: { type: String, required: true },
   password: { type: String, required: true },
   avatar: { type: String, required: true },
-  email: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
   tokens: { type: [String] },
 });
 
@@ -33,6 +36,14 @@ UserSchema.query.byUsername = function byUsername(
   username: User['username'],
 ) {
   return this.findOne({ username });
+};
+
+UserSchema.query.byEmail = function byEmail(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  this: QueryWithHelpers<any, HydratedDocument<User>, UserQueryHelpers>,
+  email: User['email'],
+) {
+  return this.findOne({ email });
 };
 
 export default model<User, UserModelType>('users', UserSchema);
