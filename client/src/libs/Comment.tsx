@@ -50,7 +50,14 @@ const Comment = (props: CommentProps) => {
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {commentOwnerDetails?.username}
           </Typography>
-          <Typography sx={{ overflowWrap: "break-word" }} variant="body2">
+          <Typography
+            sx={{
+              overflowWrap: "break-word",
+              whiteSpace: "pre-wrap",
+              color: "text.secondary",
+            }}
+            variant="body2"
+          >
             {commentDetails?.content}
           </Typography>
         </Stack>

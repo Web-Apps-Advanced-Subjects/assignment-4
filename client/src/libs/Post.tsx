@@ -76,6 +76,8 @@ const Post = (props: PostProps) => {
     enabled: postDetails?.userID !== undefined,
   });
 
+  console.log(postDetails?.content);
+
   return (
     <Card sx={{ borderRadius: boxBorderRadius }}>
       <_OptionalCardActionAreaLink inPostPage={inPostPage} postID={postID}>
@@ -97,7 +99,10 @@ const Post = (props: PostProps) => {
           title={postOwnerDetails?.username}
         />
         <CardContent>
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", whiteSpace: "pre-wrap" }}
+          >
             {postDetails?.content}
           </Typography>
         </CardContent>
