@@ -41,21 +41,19 @@ function PostFormPanel(props: PostFormPanelProps) {
 
   const { mutate: postPost, isPending: isPostPostPending } = useMutation({
     mutationFn: async ({
-      accessToken,
       content,
       media,
     }: {
-      accessToken: string;
       content: string;
       media: File | undefined;
     }) => {
-      return await postPostApi(accessToken, content, media);
+      return await postPostApi(content, media);
     },
   });
 
   const { mutate: generateContent, isPending: isGenerating } = useMutation({
-    mutationFn: async (accessToken: string) => {
-      return await generatePostContent(accessToken);
+    mutationFn: async () => {
+      return await generatePostContent();
     },
   });
 
@@ -98,7 +96,6 @@ function PostFormPanel(props: PostFormPanelProps) {
     await postPost(
       {
         content,
-        accessToken: user.accessToken,
         media: mediaFile?.file,
       },
       {
@@ -117,7 +114,7 @@ function PostFormPanel(props: PostFormPanelProps) {
       return;
     }
 
-    await generateContent(user.accessToken, {
+    await generateContent(undefined, {
       onSuccess: (data) => setContent(data),
     });
   };

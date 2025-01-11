@@ -28,7 +28,6 @@ function HomeComponent() {
 
     getPosts({ lastID: lastPost._id }).then((newPosts) => {
       setHasMore(newPosts.length > 0);
-      console.log(newPosts.length);
       setPosts((oldPosts) => oldPosts.concat(newPosts));
     });
   };

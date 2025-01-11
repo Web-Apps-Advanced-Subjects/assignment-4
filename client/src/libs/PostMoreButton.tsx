@@ -68,30 +68,22 @@ const PostMoreButton = (props: PostMoreButtonProps) => {
   const router = useRouter();
 
   const { mutate: deletePost } = useMutation({
-    mutationFn: async ({
-      accessToken,
-      postID,
-    }: {
-      accessToken: string;
-      postID: string;
-    }) => {
-      return await deletePostApi(accessToken, postID);
+    mutationFn: async ({ postID }: { postID: string }) => {
+      return await deletePostApi(postID);
     },
   });
 
   const { mutate: updatePost } = useMutation({
     mutationFn: async ({
-      accessToken,
       postID,
       content,
       media,
     }: {
-      accessToken: string;
       postID: string;
       content?: string;
       media?: File | null;
     }) => {
-      return await updatePostApi(accessToken, postID, content, media);
+      return await updatePostApi(postID, content, media);
     },
   });
 
@@ -123,7 +115,7 @@ const PostMoreButton = (props: PostMoreButtonProps) => {
     }
 
     await deletePost(
-      { postID, accessToken: user.accessToken },
+      { postID },
       {
         onSuccess: () => {
           setMenuOpen(false);
@@ -226,7 +218,6 @@ const PostMoreButton = (props: PostMoreButtonProps) => {
 
     await updatePost(
       {
-        accessToken: user?.accessToken,
         postID,
         content: editableContent,
         media: updatedMedia,

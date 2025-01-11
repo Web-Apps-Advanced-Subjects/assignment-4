@@ -76,8 +76,6 @@ const Post = (props: PostProps) => {
     enabled: postDetails?.userID !== undefined,
   });
 
-  console.log(postDetails?.content);
-
   return (
     <Card sx={{ borderRadius: boxBorderRadius }}>
       <_OptionalCardActionAreaLink inPostPage={inPostPage} postID={postID}>

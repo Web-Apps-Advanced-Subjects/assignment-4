@@ -40,7 +40,6 @@ export const getPostDetails = async (postID: Post["_id"]) => {
 };
 
 export const postPost = async (
-  accessToken: UserCredentials["accessToken"],
   content: Post["content"],
   media: File | undefined
 ) => {
@@ -58,7 +57,6 @@ export const postPost = async (
     {
       headers: {
         "Content-Type": "multipart/form-data",
-        Authorization: `JWT ${accessToken}`,
       },
     }
   );
@@ -66,20 +64,13 @@ export const postPost = async (
   return data;
 };
 
-export const generatePostContent = async (
-  accessToken: UserCredentials["accessToken"]
-) => {
-  const { data } = await axios.get<string>("http://localhost:3000/gemini", {
-    headers: {
-      Authorization: `JWT ${accessToken}`,
-    },
-  });
+export const generatePostContent = async () => {
+  const { data } = await axios.get<string>("http://localhost:3000/gemini");
 
   return data;
 };
 
 export const updatePost = async (
-  accessToken: UserCredentials["accessToken"],
   postID: Post["_id"],
   content?: Post["content"],
   media?: File | null
@@ -104,7 +95,6 @@ export const updatePost = async (
     {
       headers: {
         "Content-Type": "multipart/form-data",
-        Authorization: `JWT ${accessToken}`,
       },
     }
   );
@@ -112,17 +102,9 @@ export const updatePost = async (
   return data;
 };
 
-export const deletePost = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
-) => {
+export const deletePost = async (postID: Post["_id"]) => {
   const { data } = await axios.delete<Post>(
-    `http://localhost:3000/posts/${postID}`,
-    {
-      headers: {
-        Authorization: `JWT ${accessToken}`,
-      },
-    }
+    `http://localhost:3000/posts/${postID}`
   );
 
   return data;
@@ -189,19 +171,13 @@ export const getCommentCount = async (postID: Post["_id"]) => {
 };
 
 export const postComment = async (
-  accessToken: UserCredentials["accessToken"],
   postID: Post["_id"],
   content: Comment["content"]
 ) => {
-  const { data } = await axios.post<void>(
-    `http://localhost:3000/comments`,
-    { postID, content },
-    {
-      headers: {
-        Authorization: `JWT ${accessToken}`,
-      },
-    }
-  );
+  const { data } = await axios.post<void>(`http://localhost:3000/comments`, {
+    postID,
+    content,
+  });
 
   return data;
 };
@@ -285,7 +261,6 @@ export const refreshToken = async (
 };
 
 export const updateUser = async (
-  accessToken: UserCredentials["accessToken"],
   username?: UserDetails["username"],
   avatar?: File
 ) => {
@@ -305,7 +280,6 @@ export const updateUser = async (
     {
       headers: {
         "Content-Type": "multipart/form-data",
-        Authorization: `JWT ${accessToken}`,
       },
     }
   );
@@ -321,16 +295,12 @@ export const getLikeCount = async (postID: Post["_id"]) => {
   return data.count;
 };
 
-export const getIsLiked = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
-) => {
+export const getIsLiked = async (postID: Post["_id"]) => {
   const { data } = await axios.get<{ liked: boolean }>(
     `http://localhost:3000/likes/${postID}`,
     {
       headers: {
         "Content-Type": "application/json",
-        Authorization: `JWT ${accessToken}`,
       },
     }
   );
@@ -338,24 +308,10 @@ export const getIsLiked = async (
   return data.liked;
 };
 
-export const likePost = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
-) => {
-  await axios.post<void>(`http://localhost:3000/likes/${postID}`, undefined, {
-    headers: {
-      Authorization: `JWT ${accessToken}`,
-    },
-  });
+export const likePost = async (postID: Post["_id"]) => {
+  await axios.post<void>(`http://localhost:3000/likes/${postID}`);
 };
 
-export const unLikePost = async (
-  accessToken: UserCredentials["accessToken"],
-  postID: Post["_id"]
-) => {
-  await axios.delete<void>(`http://localhost:3000/likes/${postID}`, {
-    headers: {
-      Authorization: `JWT ${accessToken}`,
-    },
-  });
+export const unLikePost = async (postID: Post["_id"]) => {
+  await axios.delete<void>(`http://localhost:3000/likes/${postID}`);
 };

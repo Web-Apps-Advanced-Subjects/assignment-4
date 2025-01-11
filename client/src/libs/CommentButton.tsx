@@ -22,7 +22,6 @@ import {
   getUserDetails,
   Post,
   postComment as postCommentApi,
-  UserCredentials,
 } from "@libs/api";
 
 type CommentButtonProps = {
@@ -57,15 +56,13 @@ const CommentButton = (props: CommentButtonProps) => {
 
   const { mutate: postComment } = useMutation({
     mutationFn: async ({
-      accessToken,
       postID,
       content,
     }: {
-      accessToken: UserCredentials["accessToken"];
       postID: Post["_id"];
       content: string;
     }) => {
-      return await postCommentApi(accessToken, postID, content);
+      return await postCommentApi(postID, content);
     },
   });
 
@@ -90,7 +87,6 @@ const CommentButton = (props: CommentButtonProps) => {
       {
         postID,
         content: reply,
-        accessToken: user.accessToken,
       },
       {
         onSuccess: () => {

@@ -70,15 +70,13 @@ function RouteComponent() {
 
   const { mutate: updateUser } = useMutation({
     mutationFn: async ({
-      accessToken,
       username,
       avatar,
     }: {
-      accessToken: string;
       username?: string;
       avatar?: File | undefined;
     }) => {
-      return await updateUserApi(accessToken, username, avatar);
+      return await updateUserApi(username, avatar);
     },
   });
 
@@ -132,7 +130,6 @@ function RouteComponent() {
 
     await updateUser(
       {
-        accessToken: user.accessToken,
         username: editableUsername,
         avatar: avatarFile.file,
       },

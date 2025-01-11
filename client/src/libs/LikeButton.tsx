@@ -8,7 +8,6 @@ import {
   getLikeCount,
   likePost as likePostApi,
   Post,
-  UserCredentials,
   unLikePost as unLikePostApi,
 } from "@libs/api";
 
@@ -31,38 +30,21 @@ const LikeButton = (props: LikeButtonProps) => {
   });
 
   const { data: isLiked } = useQuery({
-    queryKey: ["isLiked", user, postID],
+    queryKey: ["isLiked", user?._id, postID],
     queryFn: () => {
-      if (user === null) {
-        throw new Error("should never be called with unknown user");
-      }
-
-      return getIsLiked(user.accessToken, postID);
+      return getIsLiked(postID);
     },
-    enabled: user !== undefined,
   });
 
   const { mutate: likePost } = useMutation({
-    mutationFn: async ({
-      accessToken,
-      postID,
-    }: {
-      accessToken: UserCredentials["accessToken"];
-      postID: Post["_id"];
-    }) => {
-      await likePostApi(accessToken, postID);
+    mutationFn: async ({ postID }: { postID: Post["_id"] }) => {
+      await likePostApi(postID);
     },
   });
 
   const { mutate: unLikePost } = useMutation({
-    mutationFn: async ({
-      postID,
-      accessToken,
-    }: {
-      accessToken: UserCredentials["accessToken"];
-      postID: Post["_id"];
-    }) => {
-      await unLikePostApi(accessToken, postID);
+    mutationFn: async ({ postID }: { postID: Post["_id"] }) => {
+      await unLikePostApi(postID);
     },
   });
 
@@ -80,14 +62,14 @@ const LikeButton = (props: LikeButtonProps) => {
     }
 
     await clickFunc(
-      { postID, accessToken: user.accessToken },
+      { postID },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
             queryKey: ["likeCount", postID],
           });
           queryClient.invalidateQueries({
-            queryKey: ["isLiked", user, postID],
+            queryKey: ["isLiked", user._id, postID],
           });
         },
       }
