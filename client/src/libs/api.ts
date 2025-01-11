@@ -16,7 +16,7 @@ type PostsFilters = {
 };
 
 export const getPosts = async (filters: PostsFilters = {}) => {
-  let getUrl = "http://localhost:3000/posts?limit=5";
+  let getUrl = "http://localhost:3000/posts?limit=8";
 
   if (filters.lastID !== undefined) {
     getUrl += `&lastID=${filters.lastID}`;

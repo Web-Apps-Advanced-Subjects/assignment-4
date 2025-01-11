@@ -47,7 +47,7 @@ function RouteComponent() {
       return;
     }
 
-    getComments({ postID: post._id, limit: 5, notUserID: user._id }).then(
+    getComments({ postID: post._id, limit: 10, notUserID: user._id }).then(
       (newPosts) => setComments(newPosts)
     );
   }, [user, post]);
@@ -60,7 +60,7 @@ function RouteComponent() {
     }
 
     getComments({
-      limit: 5,
+      limit: 10,
       postID: post._id,
       notUserID: user._id,
       lastID: lastComment._id,
