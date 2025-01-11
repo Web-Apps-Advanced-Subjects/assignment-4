@@ -70,9 +70,9 @@ export const generatePostContent = async (
   accessToken: UserCredentials["accessToken"]
 ) => {
   const { data } = await axios.get<string>("http://localhost:3000/gemini", {
-    // headers: {
-    //   Authorization: `JWT ${accessToken}`,
-    // },
+    headers: {
+      Authorization: `JWT ${accessToken}`,
+    },
   });
 
   return data;

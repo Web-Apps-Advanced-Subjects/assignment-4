@@ -1,21 +1,17 @@
-import { useState, ReactNode, useEffect, useMemo } from "react";
+import { useState, ReactNode, useEffect, useMemo, useCallback } from "react";
 
 import {
   User,
   refreshToken as refreshTokenApi,
   getUserDetails,
   login as loginApi,
+  logout as logoutApi,
   UserCredentials,
 } from "@libs/api";
 import { UserContext } from "./context";
 import Cookies from "js-cookie";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useInterval } from "usehooks-ts";
-
-// const getInitialState = (): User | null => {
-//   const user = sessionStorage.getItem("user");
-//   return user ? JSON.parse(user) : null;
-// };
 
 const minutesToMilliseconds = (seconds: number) => {
   return seconds * 60000;
@@ -30,7 +26,7 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
   const [userCredentials, setUserCredentials] =
     useState<UserCredentials | null>(getInitialState);
   const [rememberMe, setRememberMe] = useState(false);
-  
+
   const { mutate: _login } = useMutation({
     mutationFn: async ({
       email,
@@ -40,6 +36,12 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
       password: string;
     }) => {
       return loginApi(email, password);
+    },
+  });
+
+  const { mutate: _logout } = useMutation({
+    mutationFn: async (refreshToken: string) => {
+      await logoutApi(refreshToken);
     },
   });
 
@@ -58,7 +60,7 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
 
       return getUserDetails(userCredentials._id);
     },
-    enabled: userCredentials?._id === undefined,
+    enabled: userCredentials?._id !== undefined,
   });
 
   const user = useMemo<User | null>(() => {
@@ -70,6 +72,10 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [userCredentials, userDetails]);
 
   useEffect(() => {
+    sessionStorage.setItem("userCredentials", JSON.stringify(userCredentials));
+  }, [userCredentials]);
+
+  useEffect(() => {
     const storedRefreshToken = Cookies.get("refresh-token");
 
     if (storedRefreshToken !== undefined) {
@@ -77,21 +83,28 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
         onSuccess: (data) => {
           setUserCredentials(data);
         },
+        onError: () => {
+          Cookies.remove("refresh-token");
+          Cookies.remove("access-token");
+          sessionStorage.removeItem("userCredentials");
+        },
       });
     }
   }, [refreshToken]);
 
   useEffect(() => {
-    if (rememberMe && userCredentials !== null) {
-      Cookies.set("refresh-token", userCredentials.refreshToken);
+    if (userCredentials !== null) {
+      Cookies.set("access-token", userCredentials.accessToken, {
+        expires: 1 / 24,
+      });
+
+      if (rememberMe) {
+        Cookies.set("refresh-token", userCredentials.refreshToken, {
+          expires: 2,
+        });
+      }
     }
   }, [userCredentials, rememberMe]);
-
-  useEffect(() => {
-    if (userCredentials !== null) {
-      Cookies.set("access-token", userCredentials.accessToken);
-    }
-  }, [userCredentials]);
 
   useInterval(() => {
     if (user !== null) {
@@ -103,46 +116,46 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, minutesToMilliseconds(10));
 
-  
-
-  
-
-  // const { mutate: refreshToken, data: userCredentials } = useMutation({
-  //   mutationFn: async (refreshToken: string) => {
-  //     return refreshTokenApi(refreshToken);
-  //   },
-  // });
-
-  // const {
-  //   mutate: login,
-  //   data: userCredentials,
-  //   isPending: isPendingLogin,
-  // } = useMutation({
-  //   mutationFn: async ({
-  //     email,
-  //     password,
-  //   }: {
-  //     email: string;
-  //     password: string;
-  //   }) => {
-  //     return loginApi(email, password);
-  //   },
-  // });
-
-  useEffect(() => {
-    sessionStorage.setItem("user", JSON.stringify(user));
-
+  const login = async (
+    email: string,
+    password: string,
+    rememberMe: boolean
+  ) => {
     if (user !== null) {
-      Cookies.set("token", user.accessToken);
-    } else {
-      Cookies.remove("token");
+      return;
     }
-  }, [user]);
 
-  const logIn = (email: string, password: string, rememberMe: boolean) => {};
+    await _login(
+      { email, password },
+      {
+        onSuccess: (data) => {
+          Cookies.set("access-token", data.accessToken, {
+            expires: 1 / 24,
+          });
+          setUserCredentials(data);
+          setRememberMe(rememberMe);
+        },
+      }
+    );
+  };
+
+  const logout = useCallback(async () => {
+    if (user === null) {
+      return;
+    }
+
+    await _logout(user.refreshToken, {
+      onSuccess: () => {
+        setUserCredentials(null);
+        setRememberMe(false);
+        Cookies.remove("refresh-token");
+        Cookies.remove("access-token");
+      },
+    });
+  }, [user, _logout]);
 
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={{ user, login, logout }}>
       {children}
     </UserContext.Provider>
   );

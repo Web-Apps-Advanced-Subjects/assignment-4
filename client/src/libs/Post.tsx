@@ -65,7 +65,7 @@ const Post = (props: PostProps) => {
   });
 
   const { data: postOwnerDetails } = useQuery({
-    queryKey: ["userDetail", postDetails?.userID],
+    queryKey: ["userDetails", postDetails?.userID],
     queryFn: () => {
       if (postDetails?.userID === undefined) {
         throw new Error("should never be called with unknown user");

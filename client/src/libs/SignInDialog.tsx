@@ -1,8 +1,10 @@
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogProps,
   Divider,
+  FormControlLabel,
   Stack,
   TextField,
   Typography,
@@ -13,10 +15,8 @@ import GoogleIcon from "@mui/icons-material/Google";
 import Logo from "@assets/logo.svg?react";
 import { ChangeEvent, useEffect, useState } from "react";
 import { useUser } from "@libs/userContext";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoadingButton } from "@mui/lab";
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
-import { getUserDetails, login as loginApi } from "@libs/api";
 
 const routeApi = getRouteApi("/login");
 
@@ -28,40 +28,13 @@ function SignInDialog(props: SignInDialogProps) {
   const { onSignUpClick, onClose, ...restProps } = props;
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [rememberMe, setRememberMe] = useState(false);
 
   const navigate = useNavigate();
   const router = useRouter();
   const { redirect } = routeApi.useSearch();
 
-  const { user, setUser } = useUser();
-
-  const {
-    mutate: login,
-    data: userCredentials,
-    isPending: isPendingLogin,
-  } = useMutation({
-    mutationFn: async ({
-      email,
-      password,
-    }: {
-      email: string;
-      password: string;
-    }) => {
-      return loginApi(email, password);
-    },
-  });
-
-  const { data: userDetails, isFetching: isFetchingUserDetails } = useQuery({
-    queryKey: [userCredentials],
-    queryFn: () => {
-      if (userCredentials === undefined) {
-        throw new Error("should never be called with unknown user");
-      }
-
-      return getUserDetails(userCredentials._id);
-    },
-    enabled: userCredentials !== undefined,
-  });
+  const { user, login } = useUser();
 
   const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -71,8 +44,12 @@ function SignInDialog(props: SignInDialogProps) {
     setPassword(event.target.value);
   };
 
+  const handleRememberMeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setRememberMe(event.target.checked);
+  };
+
   const handleClickSignin = async () => {
-    await login({ email, password });
+    await login(email, password, rememberMe);
   };
 
   const handleClose = (
@@ -86,12 +63,6 @@ function SignInDialog(props: SignInDialogProps) {
     setEmail("");
     setPassword("");
   };
-
-  useEffect(() => {
-    if (userCredentials !== undefined && userDetails !== undefined) {
-      setUser({ ...userCredentials, ...userDetails });
-    }
-  }, [userCredentials, userDetails, setUser, navigate]);
 
   useEffect(() => {
     if (user !== null) {
@@ -167,10 +138,18 @@ function SignInDialog(props: SignInDialogProps) {
               autoComplete="current-password"
               onChange={handlePasswordChange}
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={handleRememberMeChange}
+                />
+              }
+              label="Remember me"
+            />
             <LoadingButton
               variant="contained"
               sx={{ borderRadius: buttonBorderRadius, textTransform: "none" }}
-              loading={isPendingLogin || isFetchingUserDetails}
               onClick={handleClickSignin}
               loadingPosition="center"
             >

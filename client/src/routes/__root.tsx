@@ -2,7 +2,6 @@ import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { type UserContext } from "@libs/userContext";
 import NotFound from "@libs/NotFound";
 
@@ -21,13 +20,10 @@ const darkTheme = createTheme({
   },
 });
 
-const queryClient = new QueryClient();
-
 function RootComponent() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
     </ThemeProvider>

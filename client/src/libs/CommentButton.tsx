@@ -41,8 +41,8 @@ const CommentButton = (props: CommentButtonProps) => {
 
   const queryClient = useQueryClient();
 
-  const { data: postOwnerDetails } = useQuery({
-    queryKey: [userID],
+  const { data: commentOwnerDetails } = useQuery({
+    queryKey: ['userDetails', userID],
     queryFn: () => {
       return getUserDetails(userID);
     },
@@ -132,8 +132,8 @@ const CommentButton = (props: CommentButtonProps) => {
                   >
                     <Avatar
                       src={
-                        postOwnerDetails &&
-                        `http://localhost:3000/${postOwnerDetails.avatar}`
+                        commentOwnerDetails &&
+                        `http://localhost:3000/${commentOwnerDetails.avatar}`
                       }
                     />
                     <Box
@@ -148,7 +148,7 @@ const CommentButton = (props: CommentButtonProps) => {
                 </Grid>
                 <Grid size={10}>
                   <Stack spacing={2}>
-                    <Typography>{postOwnerDetails?.username}</Typography>
+                    <Typography>{commentOwnerDetails?.username}</Typography>
                     <Typography>{content}</Typography>
                   </Stack>
                 </Grid>

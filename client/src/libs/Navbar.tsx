@@ -1,4 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
 import { createLink, useNavigate } from "@tanstack/react-router";
 import {
   Box,
@@ -20,7 +19,6 @@ import HomeIcon from "@mui/icons-material/Home";
 import Logo from "@assets/logo.svg?react";
 import useUser from "@libs/userContext/useUser";
 import { useEffect } from "react";
-import { logout as logoutApi } from "@libs/api";
 
 const ListItemButtonLink = createLink(ListItemButton);
 
@@ -31,22 +29,10 @@ function Navbar(props: NavbarProps) {
 
   const navigate = useNavigate();
 
-  const { user, setUser } = useUser();
-
-  const { mutate: logout } = useMutation({
-    mutationFn: async (refreshToken: string) => {
-      await logoutApi(refreshToken);
-    },
-  });
+  const { user, logout } = useUser();
 
   const handleLogoutClick = async () => {
-    if (user !== null) {
-      await logout(user.refreshToken, {
-        onSuccess: () => {
-          setUser(null);
-        },
-      });
-    }
+    await logout();
   };
 
   useEffect(() => {

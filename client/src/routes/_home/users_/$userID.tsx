@@ -55,7 +55,7 @@ function RouteComponent() {
   const [posts, setPosts] = useState<Posts>([]);
   const [hasMore, setHasMore] = useState(true);
 
-  const { user, setUser } = useUser();
+  const { user } = useUser();
 
   const theme = useTheme();
 
@@ -143,20 +143,11 @@ function RouteComponent() {
             avatar: data.avatar,
             username: data.username,
           }));
-          setUser((oldUser) => {
-            if (oldUser === null) {
-              return null;
-            }
-
-            return {
-              ...oldUser,
-              avatar: data.avatar,
-              username: data.username,
-            };
-          });
           resetEditState();
           setEditDialogOpen(false);
-          queryClient.invalidateQueries({ queryKey: [] });
+          queryClient.invalidateQueries({
+            queryKey: ["userDetails", user._id],
+          });
         },
       }
     );
