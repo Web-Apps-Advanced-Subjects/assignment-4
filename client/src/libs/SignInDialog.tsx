@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Checkbox,
   Dialog,
@@ -11,12 +12,12 @@ import {
 } from "@mui/material";
 
 import { buttonBorderRadius } from "@libs/consts";
-import GoogleIcon from "@mui/icons-material/Google";
 import Logo from "@assets/logo.svg?react";
 import { ChangeEvent, useEffect, useState } from "react";
 import { useUser } from "@libs/userContext";
 import { LoadingButton } from "@mui/lab";
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
+import { GoogleLogin } from "@react-oauth/google";
 
 const routeApi = getRouteApi("/login");
 
@@ -49,7 +50,7 @@ function SignInDialog(props: SignInDialogProps) {
   };
 
   const handleClickSignin = async () => {
-    await login(email, password, rememberMe);
+    await login({ email, password, rememberMe });
   };
 
   const handleClose = (
@@ -101,27 +102,25 @@ function SignInDialog(props: SignInDialogProps) {
             component="form"
             noValidate
             spacing={3}
-            sx={{ justifyContent: "center", minHeight: 350 }}
+            sx={{ justifyContent: "center", minHeight: 350, paddingY: 1 }}
           >
-            <Button
-              variant="contained"
-              sx={{ borderRadius: buttonBorderRadius }}
-            >
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "100%",
+            <Box sx={{ colorScheme: "light" }}>
+              <GoogleLogin
+                onSuccess={async (data) => {
+                  await login({
+                    credential: data.credential as string,
+                    rememberMe,
+                  });
                 }}
-              >
-                <GoogleIcon />
-                <Typography sx={{ textTransform: "none" }}>
-                  Sign in with Google
-                </Typography>
-              </Stack>
-            </Button>
+                text="signin"
+                useOneTap={false}
+                auto_select={false}
+                cancel_on_tap_outside={true}
+                width="300"
+                theme="outline"
+                shape="pill"
+              />
+            </Box>
             <Divider>or</Divider>
             <TextField
               label="email"

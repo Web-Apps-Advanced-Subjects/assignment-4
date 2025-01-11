@@ -240,6 +240,16 @@ export const login = async (
   return data;
 };
 
+export const googleLogin = async (credential: string) => {
+  const { data } = await axios.post<UserCredentials>(
+    "http://localhost:3000/users/google-login",
+    { credential },
+    { headers: { "Content-Type": "application/json" } }
+  );
+
+  return data;
+};
+
 export const logout = async (refreshToken: UserCredentials["refreshToken"]) => {
   await axios.post<void>(
     "http://localhost:3000/users/logout",

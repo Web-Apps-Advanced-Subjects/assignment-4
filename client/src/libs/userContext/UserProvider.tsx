@@ -5,10 +5,11 @@ import {
   refreshToken as refreshTokenApi,
   getUserDetails,
   login as loginApi,
+  googleLogin as googleLoginApi,
   logout as logoutApi,
   UserCredentials,
 } from "@libs/api";
-import { UserContext } from "./context";
+import { EmailLoginParams, GoogleLoginParams, UserContext } from "./context";
 import Cookies from "js-cookie";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useInterval } from "usehooks-ts";
@@ -36,6 +37,12 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
       password: string;
     }) => {
       return loginApi(email, password);
+    },
+  });
+
+  const { mutate: googleLogin } = useMutation({
+    mutationFn: async (credential: string) => {
+      return googleLoginApi(credential);
     },
   });
 
@@ -116,27 +123,24 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, minutesToMilliseconds(10));
 
-  const login = async (
-    email: string,
-    password: string,
-    rememberMe: boolean
-  ) => {
+  const login = async (params: EmailLoginParams | GoogleLoginParams) => {
     if (user !== null) {
       return;
     }
 
-    await _login(
-      { email, password },
-      {
-        onSuccess: (data) => {
-          Cookies.set("access-token", data.accessToken, {
-            expires: 1 / 24,
-          });
-          setUserCredentials(data);
-          setRememberMe(rememberMe);
-        },
-      }
-    );
+    const onSuccess = (data: UserCredentials) => {
+      Cookies.set("access-token", data.accessToken, {
+        expires: 1 / 24,
+      });
+      setUserCredentials(data);
+      setRememberMe(rememberMe);
+    };
+
+    if ("credential" in params) {
+      await googleLogin(params.credential, { onSuccess });
+    } else {
+      await _login(params, { onSuccess });
+    }
   };
 
   const logout = useCallback(async () => {

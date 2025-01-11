@@ -30,7 +30,7 @@ const LikeButton = (props: LikeButtonProps) => {
   });
 
   const { data: isLiked } = useQuery({
-    queryKey: ["isLiked", user?._id, postID],
+    queryKey: ["isLiked", postID],
     queryFn: () => {
       return getIsLiked(postID);
     },
@@ -69,7 +69,7 @@ const LikeButton = (props: LikeButtonProps) => {
             queryKey: ["likeCount", postID],
           });
           queryClient.invalidateQueries({
-            queryKey: ["isLiked", user._id, postID],
+            queryKey: ["isLiked", postID],
           });
         },
       }
