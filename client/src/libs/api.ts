@@ -182,18 +182,21 @@ export const postComment = async (
   return data;
 };
 
-export type UserCredentials = {
+type UserID = {
   _id: string;
+};
+
+export type UserCredentials = {
   accessToken: string;
   refreshToken: string;
-};
+} & UserID;
 
 export type UserDetails = {
   username: string;
   password: string;
   avatar: string;
   email: string;
-};
+} & UserID;
 
 export type User = UserCredentials & UserDetails;
 

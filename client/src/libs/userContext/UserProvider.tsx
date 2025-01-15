@@ -20,7 +20,16 @@ const minutesToMilliseconds = (seconds: number) => {
 
 const getInitialState = (): UserCredentials | null => {
   const userCredentials = sessionStorage.getItem("userCredentials");
-  return userCredentials ? JSON.parse(userCredentials) : null;
+
+  if (userCredentials !== undefined && userCredentials !== null) {
+    return JSON.parse(userCredentials);
+  } else {
+    sessionStorage.removeItem("userCredentials");
+    Cookies.remove("access-token");
+    Cookies.remove("refresh-token");
+
+    return null;
+  }
 };
 
 const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -79,8 +88,27 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [userCredentials, userDetails]);
 
   useEffect(() => {
-    sessionStorage.setItem("userCredentials", JSON.stringify(userCredentials));
-  }, [userCredentials]);
+    if (userCredentials !== null) {
+      sessionStorage.setItem(
+        "userCredentials",
+        JSON.stringify(userCredentials)
+      );
+      Cookies.set("access-token", userCredentials.accessToken, {
+        expires: 1 / 24,
+      });
+
+      if (rememberMe) {
+        Cookies.set("refresh-token", userCredentials.refreshToken, {
+          expires: 2,
+          path: "/users/refresh-token",
+        });
+      }
+    } else {
+      sessionStorage.removeItem("userCredentials");
+      Cookies.remove("refresh-token");
+      Cookies.remove("access-token");
+    }
+  }, [userCredentials, rememberMe]);
 
   useEffect(() => {
     const storedRefreshToken = Cookies.get("refresh-token");
@@ -89,29 +117,15 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
       refreshToken(storedRefreshToken, {
         onSuccess: (data) => {
           setUserCredentials(data);
+          setRememberMe(true);
         },
         onError: () => {
-          Cookies.remove("refresh-token");
-          Cookies.remove("access-token");
-          sessionStorage.removeItem("userCredentials");
+          setUserCredentials(null);
+          setRememberMe(false);
         },
       });
     }
   }, [refreshToken]);
-
-  useEffect(() => {
-    if (userCredentials !== null) {
-      Cookies.set("access-token", userCredentials.accessToken, {
-        expires: 1 / 24,
-      });
-
-      if (rememberMe) {
-        Cookies.set("refresh-token", userCredentials.refreshToken, {
-          expires: 2,
-        });
-      }
-    }
-  }, [userCredentials, rememberMe]);
 
   useInterval(() => {
     if (user !== null) {
@@ -129,11 +143,8 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const onSuccess = (data: UserCredentials) => {
-      Cookies.set("access-token", data.accessToken, {
-        expires: 1 / 24,
-      });
       setUserCredentials(data);
-      setRememberMe(rememberMe);
+      setRememberMe(true);
     };
 
     if ("credential" in params) {
@@ -152,8 +163,6 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
       onSuccess: () => {
         setUserCredentials(null);
         setRememberMe(false);
-        Cookies.remove("refresh-token");
-        Cookies.remove("access-token");
       },
     });
   }, [user, _logout]);
