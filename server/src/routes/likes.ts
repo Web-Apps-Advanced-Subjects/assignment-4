@@ -17,10 +17,10 @@ const router = express.Router();
  * @swagger
  * components:
  *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
+ *     cookieAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: access-token
  */
 
 /**
@@ -30,7 +30,7 @@ const router = express.Router();
  *     summary: Get is user liked post
  *     tags: [Likes]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: postID
@@ -58,6 +58,12 @@ const router = express.Router();
  *           text/plain:
  *             schema:
  *               type: string
+ *       403:
+ *         description: Authentication failed
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
  */
 
 router.get('/:postID', authenticate, async (req, res) => {
@@ -73,6 +79,37 @@ router.get('/:postID', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /likes/count:
+ *   get:
+ *     summary: Get like count
+ *     tags: [Likes]
+ *     parameters:
+ *       - in: path
+ *         name: postID
+ *         required: true
+ *         type: string
+ *         description: The id of the post to count likes for
+ *     responses:
+ *       200:
+ *         description: the like count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 required:
+ *                   - count
+ *                 properties:
+ *                   count:
+ *                     type: number
+ *                     description: the like count
+ *                 example:
+ *                   count: 47
+ */
+
 router.get('/count/:postID', async (req, res) => {
   const postID = req.params.postID as unknown as Types.ObjectId;
   const count = await likesController.getCountByPostID(postID);
@@ -87,7 +124,7 @@ router.get('/count/:postID', async (req, res) => {
  *     summary: Like a post
  *     tags: [Likes]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: postID
@@ -103,6 +140,12 @@ router.get('/count/:postID', async (req, res) => {
  *               type: string
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed
  *         content:
  *           text/plain:
  *             schema:
@@ -137,7 +180,7 @@ router.post('/:postID', authenticate, async (req, res) => {
  *     summary: Remove a like from a post
  *     tags: [Likes]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: postID
@@ -153,6 +196,12 @@ router.post('/:postID', authenticate, async (req, res) => {
  *               type: string
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed
  *         content:
  *           text/plain:
  *             schema:

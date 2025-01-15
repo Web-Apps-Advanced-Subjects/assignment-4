@@ -33,10 +33,10 @@ const router = express.Router();
  * @swagger
  * components:
  *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
+ *     cookieAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: access-token
  */
 
 /**
@@ -108,7 +108,7 @@ const router = express.Router();
  *     summary: Get posts
  *     tags: [Posts]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: query
  *         name: userID
@@ -131,12 +131,6 @@ const router = express.Router();
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/DBPost'
- *       401:
- *         description: Not authenticated
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
  */
 
 router.get('/', async (req, res) => {
@@ -155,7 +149,7 @@ router.get('/', async (req, res) => {
  *     summary: Get posts
  *     tags: [Posts]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -169,12 +163,6 @@ router.get('/', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/DBPost'
- *       401:
- *         description: Not authenticated
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
  *       404:
  *         description: No matching post found
  *         content:
@@ -201,7 +189,7 @@ router.get('/:id', async (req, res) => {
  *     summary: Update post
  *     tags: [Posts]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -223,6 +211,12 @@ router.get('/:id', async (req, res) => {
  *               type: string
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed
  *         content:
  *           text/plain:
  *             schema:
@@ -277,7 +271,7 @@ router.post('/', authenticate, upload.single('media'), async (req, res) => {
  *     summary: Create new post
  *     tags: [Posts]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -305,6 +299,12 @@ router.post('/', authenticate, upload.single('media'), async (req, res) => {
  *               type: string
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed or not post owner
  *         content:
  *           text/plain:
  *             schema:
@@ -367,7 +367,7 @@ router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
  *     summary: Delete post by id and all associated comments and likes
  *     tags: [Posts]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -383,6 +383,12 @@ router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
  *               $ref: '#/components/schemas/DBPost'
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed or not post owner
  *         content:
  *           text/plain:
  *             schema:

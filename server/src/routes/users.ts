@@ -36,10 +36,10 @@ const router = express.Router();
  * @swagger
  * components:
  *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
+ *     cookieAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: access-token
  */
 
 /**
@@ -69,6 +69,8 @@ const router = express.Router();
  *
  *     Avatar:
  *       type: object
+ *        required:
+ *          - avatar
  *       properties:
  *         avatar:
  *           type: string
@@ -125,18 +127,8 @@ const router = express.Router();
  *       - $ref: '#/components/schemas/Email'
  *       - $ref: '#/components/schemas/Avatar'
  *       - $ref: '#/components/schemas/UserID'
- *       - type: object
- *         required:
- *           - _id
- *         properties:
- *           _id:
- *             type: string
- *             description: The user id
- *         example:
- *           _id: '6777cbe51ead7054a6a78d74'
  *       required:
  *         - username
- *         - avatar
  *
  *     Credentials:
  *       allOf:
@@ -479,7 +471,7 @@ router.post('/refresh-token', async (req, res) => {
  *     summary: Update user username and/or avatar
  *     tags: [Users]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -507,14 +499,14 @@ router.post('/refresh-token', async (req, res) => {
  *           text/plain:
  *             schema:
  *               type: string
- *       404:
- *         description: User does not exist
+ *       403:
+ *         description: Authentication failed
  *         content:
  *           text/plain:
  *             schema:
  *               type: string
- *       409:
- *         description: Username taken
+ *       404:
+ *         description: User does not exist
  *         content:
  *           text/plain:
  *             schema:
@@ -575,16 +567,14 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
  * @swagger
  * /users:
  *   get:
- *     summary: Get user data
+ *     summary: Get public user data
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         type: string
- *         description: The id of the post to update
+ *         description: The id of the user to get
  *     responses:
  *       200:
  *         description: The user data

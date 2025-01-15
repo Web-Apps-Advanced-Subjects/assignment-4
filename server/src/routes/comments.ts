@@ -18,10 +18,6 @@ const router = express.Router();
  * @swagger
  * components:
  *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
  *     cookieAuth:
  *       type: apiKey
  *       in: cookie
@@ -79,8 +75,6 @@ const router = express.Router();
  *   get:
  *     summary: Get comments
  *     tags: [Comments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: userID
@@ -90,6 +84,18 @@ const router = express.Router();
  *         name: postID
  *         type: string
  *         description: The postID to filter by if needed
+ *       - in: query
+ *         name: notUserID
+ *         type: string
+ *         description: Filter out comments made by that userID
+ *       - in: query
+ *         name: limit
+ *         type: number
+ *         description: Limit the amount of results returned back from the server
+ *       - in: query
+ *         name: lastID
+ *         type: string
+ *         description: An offset like comment id to start the query from (not included)
  *     responses:
  *       200:
  *         description: the wanted comments
@@ -99,12 +105,6 @@ const router = express.Router();
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/DBComment'
- *       401:
- *         description: Not authenticated
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
  */
 
 router.get('/', async (req, res) => {
@@ -124,8 +124,6 @@ router.get('/', async (req, res) => {
  *   get:
  *     summary: Get comments count
  *     tags: [Comments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: userID
@@ -152,13 +150,6 @@ router.get('/', async (req, res) => {
  *                     description: the comment count
  *                 example:
  *                   count: 47
- *
- *       401:
- *         description: Not authenticated
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
  */
 
 router.get('/count', async (req, res) => {
@@ -175,8 +166,6 @@ router.get('/count', async (req, res) => {
  *   get:
  *     summary: Get posts
  *     tags: [Comments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -190,12 +179,6 @@ router.get('/count', async (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/DBComment'
- *       401:
- *         description: Not authenticated
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
  *       404:
  *         description: No matching comment found
  *         content:
@@ -206,10 +189,10 @@ router.get('/count', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
-  const post = await commentsController.findById(id);
+  const comment = await commentsController.findById(id);
 
-  if (post !== null) {
-    res.status(200).send(post);
+  if (comment !== null) {
+    res.status(200).send(comment);
   } else {
     res.status(404).send('not found');
   }
@@ -222,7 +205,7 @@ router.get('/:id', async (req, res) => {
  *     summary: Create new comment
  *     tags: [Comments]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -244,6 +227,12 @@ router.get('/:id', async (req, res) => {
  *               type: string
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed
  *         content:
  *           text/plain:
  *             schema:
@@ -271,7 +260,7 @@ router.post('/', authenticate, async (req, res) => {
  *     summary: Update comment
  *     tags: [Comments]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -293,6 +282,12 @@ router.post('/', authenticate, async (req, res) => {
  *               $ref: '#/components/schemas/DBComment'
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed or not comment owner
  *         content:
  *           text/plain:
  *             schema:
@@ -334,7 +329,7 @@ router.put('/:id', authenticate, async (req, res) => {
  *     summary: Delete comment by id
  *     tags: [Comments]
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -350,6 +345,12 @@ router.put('/:id', authenticate, async (req, res) => {
  *               $ref: '#/components/schemas/DBComment'
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed or not comment owner
  *         content:
  *           text/plain:
  *             schema:
@@ -377,12 +378,6 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.sendStatus(403);
     return;
   }
-
-  // if (post !== null) {
-  //   res.status(200).send(post);
-  // } else {
-  //   res.status(404).send('not found');
-  // }
 
   post = await commentsController.delete(id);
 
