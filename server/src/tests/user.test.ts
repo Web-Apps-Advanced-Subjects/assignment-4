@@ -94,17 +94,7 @@ describe('User Tests', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  test('User test register', async () => {
-    const response = await request(app)
-      .post(baseUrl + '/register')
-      .field('username', testUser.username)
-      .field('email', testUser.email)
-      .field('password', testUser.password)
-      .attach('avatar', testUser.avatar);
-    expect(response.statusCode).toBe(201);
-  });
-
-  test('User test register username taken', async () => {
+  test('User test register email taken', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -121,14 +111,35 @@ describe('User Tests', () => {
     expect(response.statusCode).toBe(409);
   });
 
-  test('User test login fail missing username', async () => {
+  test('User test register', async () => {
+    const response = await request(app)
+      .post(baseUrl + '/register')
+      .field('username', testUser.username)
+      .field('email', testUser.email)
+      .field('password', testUser.password)
+      .attach('avatar', testUser.avatar);
+    expect(response.statusCode).toBe(201);
+    expect(response.body._id).toBeDefined();
+    expect(response.body.username).toBeDefined();
+    expect(response.body.avatar).toBeDefined();
+    expect(response.body.email).toBeDefined();
+  });
+
+  test('User test login fail missing email', async () => {
     const response = await request(app)
       .post(baseUrl + '/login')
       .send({ password: testUser.password });
     expect(response.statusCode).toBe(400);
   });
 
-  test('User test login fail not exist username', async () => {
+  test('User test login fail missing password', async () => {
+    const response = await request(app)
+      .post(baseUrl + '/login')
+      .send({ email: testUser.email });
+    expect(response.statusCode).toBe(400);
+  });
+
+  test('User test login fail not exist user with email', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -138,15 +149,8 @@ describe('User Tests', () => {
 
     const response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username + 'a', password: testUser.password });
+      .send({ email: testUser.email + 'a', password: testUser.password });
     expect(response.statusCode).toBe(401);
-  });
-
-  test('User test login fail missing password', async () => {
-    const response = await request(app)
-      .post(baseUrl + '/login')
-      .send({ username: testUser.username });
-    expect(response.statusCode).toBe(400);
   });
 
   test('User test login fail not matching password', async () => {
@@ -159,7 +163,7 @@ describe('User Tests', () => {
 
     const response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password + 'a' });
+      .send({ email: testUser.email, password: testUser.password + 'a' });
     expect(response.statusCode).toBe(401);
   });
 
@@ -173,16 +177,14 @@ describe('User Tests', () => {
 
     const response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
     expect(response.statusCode).toBe(200);
-    const accessToken = response.body.accessToken;
-    const refreshToken = response.body.refreshToken;
-    expect(accessToken).toBeDefined();
-    expect(refreshToken).toBeDefined();
+    expect(response.body.accessToken).toBeDefined();
+    expect(response.body.refreshToken).toBeDefined();
     expect(response.body._id).toBeDefined();
   });
 
-  test('Check tokens are not the same', async () => {
+  test('User test login issues more tokens', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -192,13 +194,13 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { accessToken: firstAccessToken, refreshToken: firstRefreshToken } = response.body;
 
     response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { accessToken: secondAccessToken, refreshToken: secondRefreshToken } = response.body;
 
@@ -221,9 +223,19 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
-    const { refreshToken } = response.body;
+    const { accessToken: oldAccessToken, refreshToken } = response.body;
+
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    response = await request(app)
+      .put(baseUrl)
+      .set('Cookie', [`access-token=${oldAccessToken}`])
+      .send({
+        username: 'OtherTestUser',
+      });
+    expect(response.statusCode).toBe(403);
 
     response = await request(app)
       .post(baseUrl + '/refresh-token')
@@ -233,9 +245,20 @@ describe('User Tests', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.accessToken).toBeDefined();
     expect(response.body.refreshToken).toBeDefined();
-  });
+    expect(response.body._id).toBeDefined();
 
-  test('User test double use refresh token', async () => {
+    const { accessToken: newAccessToken } = response.body;
+
+    response = await request(app)
+      .put(baseUrl)
+      .set('Cookie', [`access-token=${newAccessToken}`])
+      .send({
+        username: 'OtherTestUser',
+      });
+    expect(response.statusCode).toBe(200);
+  }, 10000);
+
+  test('User test refresh token fail double use token', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -245,7 +268,7 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { refreshToken } = response.body;
 
@@ -261,10 +284,10 @@ describe('User Tests', () => {
       .send({
         refreshToken: refreshToken,
       });
-    expect(response2.statusCode).not.toBe(200);
+    expect(response2.statusCode).toBe(403);
   });
 
-  test('User test invalidated all refresh tokens', async () => {
+  test('User test refresh token fail invalidated all refresh tokens', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -274,7 +297,7 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { refreshToken } = response.body;
 
@@ -283,7 +306,6 @@ describe('User Tests', () => {
       .send({
         refreshToken: refreshToken,
       });
-    expect(response.statusCode).toBe(200);
 
     const { refreshToken: newRefreshToken } = response.body;
 
@@ -292,17 +314,17 @@ describe('User Tests', () => {
       .send({
         refreshToken: refreshToken,
       });
-    expect(response.statusCode).not.toBe(200);
+    expect(response.statusCode).toBe(403);
 
     response = await request(app)
       .post(baseUrl + '/refresh-token')
       .send({
         refreshToken: newRefreshToken,
       });
-    expect(response.statusCode).not.toBe(200);
+    expect(response.statusCode).toBe(403);
   });
 
-  test('User test update fail missing arguments', async () => {
+  test('User test update fail missing access-token', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -312,18 +334,15 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
-    const { refreshToken } = response.body;
+    const { accessToken } = response.body;
 
-    response = await request(app)
-      .put(baseUrl)
-      .set({ authorization: 'JWT ' + refreshToken })
-      .send();
-    expect(response.statusCode).not.toBe(200);
+    response = await request(app).put(baseUrl);
+    expect(response.statusCode).toBe(401);
   });
 
-  test('User test update fail username taken', async () => {
+  test('User test update fail bad avatar file format', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -331,55 +350,20 @@ describe('User Tests', () => {
       .field('password', testUser.password)
       .attach('avatar', testUser.avatar);
 
-    const newUserName = testUser.username + 'a';
-
-    await request(app)
-      .post(baseUrl + '/register')
-      .field('username', newUserName)
-      .field('email', testUser.email)
-      .field('password', testUser.password)
-      .attach('avatar', testUser.avatar);
-
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { accessToken } = response.body;
 
     response = await request(app)
       .put(baseUrl)
-      .set({ authorization: 'JWT ' + accessToken })
-      .send({ username: newUserName });
-    expect(response.statusCode).toBe(409);
+      .set('Cookie', [`access-token=${accessToken}`])
+      .attach('avatar', 'src/tests/fixtures/bad-profile-picture.webp');
+    expect(response.statusCode).toBe(400);
   });
 
-  test('User test update username', async () => {
-    await request(app)
-      .post(baseUrl + '/register')
-      .field('username', testUser.username)
-      .field('email', testUser.email)
-      .field('password', testUser.password)
-      .attach('avatar', testUser.avatar);
-
-    let response = await request(app)
-      .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
-
-    const { accessToken } = response.body;
-    const newUsername = testUser.username + 'a';
-
-    response = await request(app)
-      .put(baseUrl)
-      .set({ authorization: 'JWT ' + accessToken })
-      .send({ username: newUsername });
-
-    expect(response.statusCode).toBe(200);
-
-    const updatedUser = await userModel.findById(response.body._id);
-    expect(updatedUser?.username).toBe(newUsername);
-  });
-
-  test('User test update avatar', async () => {
+  test('User test update user', async () => {
     let response = await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -391,19 +375,25 @@ describe('User Tests', () => {
 
     response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { accessToken } = response.body;
+    const newUsername = testUser.username + 'a';
 
     response = await request(app)
       .put(baseUrl)
-      .set({ authorization: 'JWT ' + accessToken })
+      .set('Cookie', [`access-token=${accessToken}`])
+      .field('username', newUsername)
       .attach('avatar', testUser.avatar);
 
     expect(response.statusCode).toBe(200);
+    expect(response.body._id).toBeDefined();
+    expect(response.body.username).toBeDefined();
+    expect(response.body.avatar).toBeDefined();
+    expect(response.body.email).toBeDefined();
 
-    const updatedUser = await userModel.findById(response.body._id);
-    expect(updatedUser?.avatar).not.toBe(oldAvatar);
+    expect(response.body.username).toBe(newUsername);
+    expect(response.body.avatar).not.toBe(oldAvatar);
   });
 
   test('User test logout fail missing refresh token', async () => {
@@ -416,38 +406,10 @@ describe('User Tests', () => {
 
     await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const response = await request(app).post(baseUrl + '/logout');
     expect(response.statusCode).toBe(400);
-  });
-
-  test('User test logout fail bad refresh token', async () => {
-    await request(app)
-      .post(baseUrl + '/register')
-      .field('username', testUser.username)
-      .field('email', testUser.email)
-      .field('password', testUser.password)
-      .attach('avatar', testUser.avatar);
-
-    let response = await request(app)
-      .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
-
-    const { refreshToken: oldRefreshToken } = response.body;
-
-    response = await request(app)
-      .post(baseUrl + '/refresh-token')
-      .send({
-        refreshToken: oldRefreshToken,
-      });
-
-    response = await request(app)
-      .post(baseUrl + '/logout')
-      .send({
-        refreshToken: oldRefreshToken,
-      });
-    expect(response.statusCode).toBe(403);
   });
 
   test('User test logout', async () => {
@@ -460,26 +422,27 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
     const { refreshToken } = response.body;
 
     response = await request(app)
       .post(baseUrl + '/logout')
       .send({
-        refreshToken: refreshToken,
+        refreshToken,
       });
+
     expect(response.statusCode).toBe(200);
 
     response = await request(app)
-      .post(baseUrl + '/refresh-token')
+      .post(baseUrl + '/logout')
       .send({
-        refreshToken: refreshToken,
+        refreshToken,
       });
-    expect(response.statusCode).not.toBe(200);
+    expect(response.statusCode).toBe(403);
   });
 
-  test('User test timeout token ', async () => {
+  test('User test fail get user details no user', async () => {
     await request(app)
       .post(baseUrl + '/register')
       .field('username', testUser.username)
@@ -489,34 +452,37 @@ describe('User Tests', () => {
 
     let response = await request(app)
       .post(baseUrl + '/login')
-      .send({ username: testUser.username, password: testUser.password });
+      .send({ email: testUser.email, password: testUser.password });
 
-    const { accessToken: oldAccessToken, refreshToken } = response.body;
+    const { _id } = response.body;
 
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await userModel.findByIdAndDelete(_id);
 
-    response = await request(app)
-      .put(baseUrl)
-      .set({ authorization: 'JWT ' + oldAccessToken })
-      .send({
-        username: 'OtherTestUser',
-      });
-    expect(response.statusCode).not.toBe(200);
+    response = await request(app).get(baseUrl + '/' + _id);
 
-    response = await request(app)
-      .post(baseUrl + '/refresh-token')
-      .send({
-        refreshToken: refreshToken,
-      });
+    expect(response.statusCode).toBe(404);
+  });
+
+  test('User test get user details', async () => {
+    await request(app)
+      .post(baseUrl + '/register')
+      .field('username', testUser.username)
+      .field('email', testUser.email)
+      .field('password', testUser.password)
+      .attach('avatar', testUser.avatar);
+
+    let response = await request(app)
+      .post(baseUrl + '/login')
+      .send({ email: testUser.email, password: testUser.password });
+
+    const { _id } = response.body;
+
+    response = await request(app).get(baseUrl + '/' + _id);
+
     expect(response.statusCode).toBe(200);
-    const { accessToken: newAccessToken } = response.body;
-
-    response = await request(app)
-      .put(baseUrl)
-      .set({ authorization: 'JWT ' + newAccessToken })
-      .send({
-        username: 'OtherTestUser',
-      });
-    expect(response.statusCode).toBe(200);
-  }, 10000);
+    expect(response.body._id).toBeDefined();
+    expect(response.body.username).toBeDefined();
+    expect(response.body.avatar).toBeDefined();
+    expect(response.body.email).toBeDefined();
+  });
 });

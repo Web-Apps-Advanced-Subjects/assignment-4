@@ -36,7 +36,7 @@ beforeEach(async () => {
 
   let response = await request(app)
     .post('/users/login')
-    .send({ username: testUser.username, password: testUser.password });
+    .send({ email: testUser.email, password: testUser.password });
 
   const { accessToken, refreshToken } = response.body;
   testUser.accessToken = accessToken;
@@ -44,7 +44,7 @@ beforeEach(async () => {
 
   response = await request(app)
     .post('/posts')
-    .set({ authorization: 'JWT ' + testUser.refreshToken })
+    .set('Cookie', [`access-token=${testUser.accessToken}`])
     .field('content', testPost.content)
     .attach('media', testPost.media);
   const { _id } = response.body;
@@ -96,33 +96,33 @@ describe('Like Tests', () => {
   test('Like test get is liked', async () => {
     let response = await request(app)
       .get(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.body.liked).toBe(false);
 
     await request(app)
       .post(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     response = await request(app)
       .get(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.body.liked).toBe(true);
   });
 
   test('Like test fail like post without auth', async () => {
     await request(app)
       .post(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     const response = await request(app)
       .post(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(409);
   });
 
   test('Like test like post', async () => {
     const response = await request(app)
       .post(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(201);
   });
 
@@ -134,17 +134,23 @@ describe('Like Tests', () => {
   test('Like test fail delete like not exist', async () => {
     let response = await request(app)
       .delete(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(404);
   });
 
   test('Like test delete like', async () => {
     await request(app)
       .post(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     let response = await request(app)
       .delete(`${baseUrl}/${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(200);
+  });
+
+  test('Like test get like count', async () => {
+    let response = await request(app).get(`${baseUrl}/count/${testPost._id}`);
+
+    expect(response.body.count).toBeDefined();
   });
 });

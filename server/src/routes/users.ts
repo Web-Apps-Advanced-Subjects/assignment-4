@@ -346,7 +346,7 @@ router.post('/google-login', async (req, res) => {
         return;
       }
 
-      const avatar = `public/avatars/${Date.now()}.jpg`
+      const avatar = `public/avatars/${Date.now()}.jpg`;
       const systemPath = path.resolve('public/avatars/', `${Date.now()}.jpg`);
       const fileStream = fs.createWriteStream(systemPath, { flags: 'wx' });
       await finished(Readable.fromWeb(avatarRes.body).pipe(fileStream));
@@ -410,7 +410,7 @@ router.post('/logout', async (req, res) => {
   }
 
   try {
-    const user = await usersController.verifyRefreshToken(refreshToken);
+    await usersController.verifyRefreshToken(refreshToken);
 
     res.sendStatus(200);
   } catch (err) {
@@ -535,16 +535,6 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
     return;
   }
 
-  if (oldUser._id.toJSON() !== userID) {
-    res.sendStatus(403);
-    return;
-  }
-
-  if (username === undefined && file === undefined) {
-    res.status(400).send('Missing Arguments');
-    return;
-  }
-
   if (username !== undefined) {
     params['username'] = username;
   }
@@ -619,7 +609,6 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
 router.get('/:id', async (req, res) => {
   // @ts-expect-error "user" was patched to the req object from the auth middleware
   const id = req.params.id as unknown as Types.ObjectId;
-  const params: Partial<User> = {};
 
   const user = await usersController.findById(id);
 

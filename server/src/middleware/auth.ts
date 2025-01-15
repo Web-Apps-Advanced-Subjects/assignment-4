@@ -2,10 +2,6 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 
 const authenticate = async (req: Request, res: Response, next: NextFunction) => {
-  // console.log(req.headers);
-  // console.log(req.cookies)
-  // const authHeaders = req.headers['authorization'];
-  // const token = authHeaders && authHeaders.split(' ')[1];
   const token = req.cookies['access-token'] as string | undefined;
 
   if (token === undefined) {

@@ -23,7 +23,7 @@ class CommentsController extends BaseController<Comment> {
 
   async getAll(filters: Filters = {}): Promise<Pick<HydratedDocument<Comment>, '_id'>[]> {
     let query;
-    query = this.model.find().select({ id: 1 }).sort({ _id: 'desc' });
+    query = this.model.find().sort({ _id: 'desc' }).select({ _id: 1 });
 
     if (filters.postID !== undefined) {
       query = query.byPostID(filters.postID);

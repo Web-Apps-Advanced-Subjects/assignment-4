@@ -22,6 +22,10 @@ const router = express.Router();
  *       type: http
  *       scheme: bearer
  *       bearerFormat: JWT
+ *     cookieAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: access-token
  */
 
 /**
@@ -299,13 +303,26 @@ router.put('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
   const { content } = req.body;
 
+  let comment = await commentsController.findById(id);
+
+  if (comment === null) {
+    res.sendStatus(404);
+    return;
+  }
+
+  // @ts-expect-error "user" was patched to the req object from the auth middleware
+  if (comment.userID.toString() !== req.user._id) {
+    res.sendStatus(403);
+    return;
+  }
+
   const commentParams: Partial<Comment> = {};
 
   if (content !== undefined) {
     commentParams['content'] = content;
   }
 
-  const comment = await commentsController.update(id, commentParams);
+  comment = await commentsController.update(id, commentParams);
 
   res.status(200).send(comment);
 });
@@ -348,13 +365,28 @@ router.put('/:id', authenticate, async (req, res) => {
 router.delete('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
 
-  const post = await commentsController.delete(id);
+  let post = await commentsController.findById(id);
 
-  if (post !== null) {
-    res.status(200).send(post);
-  } else {
-    res.status(404).send('not found');
+  if (post === null) {
+    res.sendStatus(404);
+    return;
   }
+
+  // @ts-expect-error "user" was patched to the req object from the auth middleware
+  if (post.userID.toString() !== req.user._id) {
+    res.sendStatus(403);
+    return;
+  }
+
+  // if (post !== null) {
+  //   res.status(200).send(post);
+  // } else {
+  //   res.status(404).send('not found');
+  // }
+
+  post = await commentsController.delete(id);
+
+  res.status(200).send(post);
 });
 
 export default router;

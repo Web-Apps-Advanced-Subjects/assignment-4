@@ -39,7 +39,7 @@ beforeEach(async () => {
 
   response = await request(app)
     .post('/users/login')
-    .send({ username: testUser.username, password: testUser.password });
+    .send({ email: testUser.email, password: testUser.password });
 
   const { accessToken, refreshToken } = response.body;
   testUser.accessToken = accessToken;
@@ -47,7 +47,7 @@ beforeEach(async () => {
 
   response = await request(app)
     .post('/posts')
-    .set({ authorization: 'JWT ' + testUser.refreshToken })
+    .set('Cookie', [`access-token=${testUser.accessToken}`])
     .field('content', testPost.content)
     .attach('media', testPost.media);
   const { _id: postID } = response.body;
@@ -96,30 +96,6 @@ const testComment: Omit<Comment, 'userID' | '_id' | 'postID'> = {
 };
 
 describe('Comment Tests', () => {
-  test('Comment test fail post comment without content', async () => {
-    const response = await request(app)
-      .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .send({ postID: testPost._id });
-    expect(response.statusCode).toBe(400);
-  });
-
-  test('Comment test fail post comment without postID', async () => {
-    const response = await request(app)
-      .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .send({ content: testComment.content });
-    expect(response.statusCode).toBe(400);
-  });
-
-  test('Comment test post comment', async () => {
-    const response = await request(app)
-      .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .send({ content: testComment.content, postID: testPost._id });
-    expect(response.statusCode).toBe(201);
-  });
-
   test('Comment test fail post comment without auth', async () => {
     const response = await request(app)
       .post(baseUrl)
@@ -127,37 +103,58 @@ describe('Comment Tests', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  test('Comment test fail get comment without auth', async () => {
-    await request(app)
+  test('Comment test fail post comment without content', async () => {
+    const response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ postID: testPost._id });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  test('Comment test fail post comment without postID', async () => {
+    const response = await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  test('Comment test post comment', async () => {
+    const response = await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
-    const response = await request(app).get(baseUrl);
-    expect(response.statusCode).toBe(401);
+    expect(response.statusCode).toBe(201);
+    expect(response.body._id).toBeDefined();
+    expect(response.body.content).toBeDefined();
+    expect(response.body.userID).toBeDefined();
+    expect(response.body.postID).toBeDefined();
   });
 
   test('Comment test get all comment', async () => {
     await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     const response = await request(app)
       .get(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(200);
     expect(response.body.comments.length).toBe(2);
   });
 
   test('Comment test get all comments by user id', async () => {
     const newTestUser = { ...testUser };
-    newTestUser.username += 'a';
+    newTestUser.email += 'a';
 
     await request(app)
       .post('/users/register')
@@ -168,7 +165,7 @@ describe('Comment Tests', () => {
 
     let response = await request(app)
       .post('/users/login')
-      .send({ username: newTestUser.username, password: newTestUser.password });
+      .send({ email: newTestUser.email, password: newTestUser.password });
 
     const { accessToken, refreshToken, _id: newTestUserID } = response.body;
     newTestUser.accessToken = accessToken;
@@ -176,17 +173,55 @@ describe('Comment Tests', () => {
 
     await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + newTestUser.refreshToken })
+      .set('Cookie', [`access-token=${newTestUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     response = await request(app)
       .get(`${baseUrl}?userID=${newTestUserID}`)
-      .set({ authorization: 'JWT ' + newTestUser.refreshToken });
+      .set('Cookie', [`access-token=${newTestUser.accessToken}`]);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.comments.length).toBe(1);
+  });
+
+  test('Comment test get all comments by not user id', async () => {
+    const newTestUser = { ...testUser };
+    newTestUser.email += 'a';
+
+    await request(app)
+      .post('/users/register')
+      .field('username', newTestUser.username)
+      .field('email', newTestUser.email)
+      .field('password', newTestUser.password)
+      .attach('avatar', newTestUser.avatar);
+
+    let response = await request(app)
+      .post('/users/login')
+      .send({ email: newTestUser.email, password: newTestUser.password });
+
+    const { accessToken, refreshToken, _id: newTestUserID } = response.body;
+    newTestUser.accessToken = accessToken;
+    newTestUser.refreshToken = refreshToken;
+
+    await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${newTestUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    response = await request(app)
+      .get(`${baseUrl}?notUserID=${newTestUserID}`)
+      .set('Cookie', [`access-token=${newTestUser.accessToken}`]);
+
     expect(response.statusCode).toBe(200);
     expect(response.body.comments.length).toBe(1);
   });
@@ -194,89 +229,170 @@ describe('Comment Tests', () => {
   test('Comment test get all comments by post id', async () => {
     let response = await request(app)
       .post('/posts')
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .field('content', testPost.content)
       .attach('media', testPost.media);
     const { _id: newPostID } = response.body;
 
     await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: newPostID });
 
     response = await request(app)
       .get(`${baseUrl}?postID=${newPostID}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
     expect(response.statusCode).toBe(200);
     expect(response.body.comments.length).toBe(1);
   });
 
-  test('Comment test fail get comment by id without auth', async () => {
-    let response = await request(app)
+  test('Comment test get all comments with limit', async () => {
+    await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
-    let { _id } = response.body;
+    await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
 
-    response = await request(app).get(`${baseUrl}/${_id}`);
-    expect(response.statusCode).toBe(401);
+    let response = await request(app)
+      .get(`${baseUrl}?limit=1`)
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.comments.length).toBe(1);
+  });
+
+  test('Comment test get all comments by lastID', async () => {
+    await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    let response = await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    const { _id: lastID } = response.body;
+
+    response = await request(app)
+      .get(`${baseUrl}?lastID=${lastID}`)
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.comments.length).toBe(1);
   });
 
   test('Comment test fail get comment by id no such id', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
 
     response = await request(app)
       .delete(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     response = await request(app)
       .get(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(404);
   });
 
   test('Comment test get comment by id', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
 
     response = await request(app)
       .get(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.statusCode).toBe(200);
   });
 
   test('Comment test fail update comment without auth', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
 
-    response = await request(app).get(`${baseUrl}/${_id}`);
+    response = await request(app).put(`${baseUrl}/${_id}`);
 
     expect(response.statusCode).toBe(401);
+  });
+
+  test('Comment test fail update comment not exist', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    let { _id } = response.body;
+
+    await request(app)
+      .delete(`${baseUrl}/${_id}`)
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    response = await request(app)
+      .put(`${baseUrl}/${_id}`)
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  test('Comment test fail update comment not comment owner', async () => {
+    const newTestUser = { ...testUser };
+    newTestUser.email += 'a';
+
+    await request(app)
+      .post('/users/register')
+      .field('username', newTestUser.username)
+      .field('email', newTestUser.email)
+      .field('password', newTestUser.password)
+      .attach('avatar', newTestUser.avatar);
+
+    let response = await request(app)
+      .post('/users/login')
+      .send({ email: newTestUser.email, password: newTestUser.password });
+
+    const { accessToken, refreshToken, _id: newTestUserID } = response.body;
+    newTestUser.accessToken = accessToken;
+    newTestUser.refreshToken = refreshToken;
+
+    response = await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${newTestUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    let { _id } = response.body;
+
+    response = await request(app)
+      .put(`${baseUrl}/${_id}`)
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    expect(response.statusCode).toBe(403);
   });
 
   test('Comment test update comment', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
@@ -287,20 +403,25 @@ describe('Comment Tests', () => {
 
     response = await request(app)
       .put(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: updatedComment.content });
     expect(response.statusCode).toBe(200);
 
     response = await request(app)
       .get(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    expect(response.body._id).toBeDefined();
+    expect(response.body.userID).toBeDefined();
+    expect(response.body.postID).toBeDefined();
+    expect(response.body.content).toBeDefined();
     expect(response.body.content).toBe(updatedComment.content);
   });
 
   test('Comment test fail delete comment without auth', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
@@ -313,62 +434,88 @@ describe('Comment Tests', () => {
   test('Comment test fail delete comment no such id', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
 
     await request(app)
       .delete(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     response = await request(app)
       .delete(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     expect(response.statusCode).toBe(404);
   });
 
-  test('Comment test delete comment', async () => {
+  test('Comment test fail delete comment not comment owner', async () => {
+    const newTestUser = { ...testUser };
+    newTestUser.email += 'a';
+
+    await request(app)
+      .post('/users/register')
+      .field('username', newTestUser.username)
+      .field('email', newTestUser.email)
+      .field('password', newTestUser.password)
+      .attach('avatar', newTestUser.avatar);
+
     let response = await request(app)
+      .post('/users/login')
+      .send({ email: newTestUser.email, password: newTestUser.password });
+
+    const { accessToken, refreshToken, _id: newTestUserID } = response.body;
+    newTestUser.accessToken = accessToken;
+    newTestUser.refreshToken = refreshToken;
+
+    response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${newTestUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     let { _id } = response.body;
 
     response = await request(app)
       .delete(`${baseUrl}/${_id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  test('Comment test delete comment', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
+      .send({ content: testComment.content, postID: testPost._id });
+
+    let { _id } = response.body;
+
+    response = await request(app)
+      .delete(`${baseUrl}/${_id}`)
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     expect(response.statusCode).toBe(200);
+    expect(response.body._id).toBeDefined();
+    expect(response.body.content).toBeDefined();
+    expect(response.body.postID).toBeDefined();
+    expect(response.body.userID).toBeDefined();
 
     response = await request(app)
       .get(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
     expect(response.body.comments.length).toBe(0);
-  });
-
-  test('Comment test fail get comment count no auth', async () => {
-    let response = await request(app)
-      .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .send({ content: testComment.content, postID: testPost._id });
-
-    response = await request(app).get(`${baseUrl}/count`);
-
-    expect(response.statusCode).toBe(401);
   });
 
   test('Comment test get comment count by postID', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     response = await request(app)
       .get(`${baseUrl}/count?postID=${testPost._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     expect(response.statusCode).toBe(200);
     expect(response.body.count).toBe(1);
@@ -377,12 +524,12 @@ describe('Comment Tests', () => {
   test('Comment test get comment count by userID', async () => {
     let response = await request(app)
       .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .set('Cookie', [`access-token=${testUser.accessToken}`])
       .send({ content: testComment.content, postID: testPost._id });
 
     response = await request(app)
       .get(`${baseUrl}/count?userID=${testUser._id}`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
+      .set('Cookie', [`access-token=${testUser.accessToken}`]);
 
     expect(response.statusCode).toBe(200);
     expect(response.body.count).toBe(1);
